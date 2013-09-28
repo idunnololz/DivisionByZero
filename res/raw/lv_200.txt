@@ -1,0 +1,123 @@
+// the a will allow us to specify map information
+// specify that we are using map #1
+a 1
+// file reader will then continue to read map info until it has found a "e" on a line
+// which denotes the end of the map specification
+
+#2
+$The Test
+
+// initial lives and gold
+l 20
+g 5000
+
+// we may also change default map settings such as creep drop off
+// and creep destination...
+// first 2 numbers are drop off
+// second 2 are destination
+// x then y of course
+//5
+//0
+//^ sets start to be grid coordinates (5, 0)
+//0
+//12
+//^ sets destination to be grid coordinates (0, 12)
+
+// this is how spawns will be set...
+// first s denotes a spawn command followed by a space
+// all subsequent arguments will be seperated by a space
+// the first argument is the image number/ sprite type (refer to sprite sheet)
+// the second argument is the number of sprites to spawn
+// the third number is the spawn rate (the higher the number the slower the spawn rate)
+// the fourth is the movement speed modifier (expressed in GIRD_LENGTH)
+// the fifth is the hp of the sprites
+// the sixth is the gold reward of the sprites
+// the seventh is a boolean of whether it's a sub-wave
+//
+// here is a sample:
+// s 1 10 20 1 10     
+//   t nu sr h reward
+//   y mb    p
+//   p er sp
+//   e    aw
+//        n 
+//        ra
+//        te
+
+//1
+s 1 20 1000 10 10
+
+p 10000
+
+//6
+s 1 20 1000 15 10
+
+p 10000
+
+//7
+s 1 30 1000 20 10
+
+p 10000
+
+//tip
+m The enemies on the next wave move a bit faster. Try building trash towers to slow them down!
+
+//8
+s 1 40 1000 40 20
+
+p 10000
+
+//tip
+m Upgrades are an important aspect of the game. Updating turrets increases their attack speed, damage and range!
+
+//9
+s 1 20 1000 60 20
+
+p 10000
+
+//10
+s 1 10 1000 90 30
+
+p 20000
+
+s 2 30 500 120 40
+
+p 15000
+
+s 1 20 700 200 30
+
+p 15000
+
+s 1 20 500 250 30
+
+p 30000
+
+s 2 40 500 400 50
+
+p 30000
+
+s 3 10 1000 400 100
+
+p 30000
+
+s 3 10 1000 500 100
+
+p 30000
+
+s 2 50 500 600 60
+
+p 10000
+
+s 4 10 1000 450 60
+
+p 60000
+
+s 3 30 3000 800 100
+
+p 40000
+
+s 2 40 2000 1200 100
+
+p 30000
+
+s 3 30 2000 1400 100

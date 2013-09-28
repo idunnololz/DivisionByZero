@@ -1,0 +1,45 @@
+// the a will allow us to specify map information
+// specify that we are using map #1
+a 1
+// file reader will then continue to read map info until it has found a "e" on a line
+// which denotes the end of the map specification
+
+// initial lives and gold
+l 0
+g 5000
+
+// we may also change default map settings such as creep drop off
+// and creep destination...
+// first 2 numbers are drop off
+// second 2 are destination
+// x then y of course
+//5
+//0
+//^ sets start to be grid coordinates (5, 0)
+//0
+//12
+//^ sets destination to be grid coordinates (0, 12)
+
+// this is how spawns will be set...
+// first s denotes a spawn command followed by a space
+// all subsequent arguments will be seperated by a space
+// the first argument is the image number/ sprite type (refer to sprite sheet)
+// the second argument is the number of sprites to spawn
+// the third number is the spawn rate (the higher the number the slower the spawn rate)
+// the fourth is the movement speed modifier (expressed in GIRD_LENGTH)
+// the fifth is the hp of the sprites
+// the sixth is the gold reward of the sprites
+// the seventh is a boolean of whether it's a sub-wave
+//
+// here is a sample:
+// s 1 10 20 1 1 10     0 
+//   t nu sr m h reward toggle if next wave is consecutive
+//   y mb    s p
+//   p er sp
+//   e    aw
+//        n 
+//        ra
+//        te
+
+//1
+s 1 20 1000 2 1 10 1

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/Black"
+    android:orientation="vertical" >
+
+    <ImageView
+        android:id="@+id/imgBanner"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:src="@drawable/tag_banner" />
+
+    <ImageView
+        android:id="@+id/imgTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:src="@drawable/dbz_title" />
+
+    <Button
+        android:id="@+id/btnExit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="10dp"
+        android:layout_marginRight="10dp"
+        android:text="Exit" 
+        android:onClick="onExitClicked"
+        style="@style/CustomButton" />
+
+    <Button
+        android:id="@+id/btnAbout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/btnExit"
+        android:layout_alignBottom="@+id/btnExit"
+        android:layout_marginRight="10dp"
+        android:layout_toLeftOf="@+id/btnExit"
+        android:text="About"
+        android:onClick="onAboutClicked"
+        style="@style/CustomButton" />
+
+    <Button
+        android:id="@+id/btnSettings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/btnAbout"
+        android:layout_alignBottom="@+id/btnAbout"
+        android:layout_marginRight="10dp"
+        android:layout_toLeftOf="@+id/btnAbout"
+        android:text="Settings"
+        android:onClick="onSettingsClicked"
+        style="@style/CustomButton"/>
+
+    <Button
+        android:id="@+id/btnPlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/btnSettings"
+        android:layout_alignBottom="@+id/btnSettings"
+        android:layout_marginRight="10dp"
+        android:layout_toLeftOf="@+id/btnSettings"
+        android:text="Play"
+        android:onClick="onPlayClicked"
+        style="@style/CustomButton" />
+
+</RelativeLayout>
