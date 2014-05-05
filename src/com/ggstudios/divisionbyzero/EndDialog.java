@@ -1,5 +1,8 @@
 package com.ggstudios.divisionbyzero;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.graphics.Color;
 import android.graphics.Paint;
 
@@ -20,7 +23,7 @@ public class EndDialog extends BaseDialog implements Clickable, Updatable {
 	private static final String TAG = "EndScreen";
 
 	private static final float WINDOW_WIDTH = 11;
-	private static final float WINDOW_HEIGHT = 7f;
+	private static final float WINDOW_HEIGHT = 6f;
 
 	private static final float TRANSITION_DURATION = 1f;
 
@@ -31,9 +34,9 @@ public class EndDialog extends BaseDialog implements Clickable, Updatable {
 	private boolean transitioning = false;
 
 	private boolean loaded = false;
-	private boolean visible = false;
 
-	private Button btnRetry, btnBack;
+	private Button btnRetry, btnBack, btnOk;
+	private List<Button> buttons = new ArrayList<Button>();
 
 	/*
 	 * Scores: Kills, Lives, Money Earned, Score
@@ -68,9 +71,10 @@ public class EndDialog extends BaseDialog implements Clickable, Updatable {
 		x = (Core.canvasWidth - w) / 2f;
 		y = (Core.canvasHeight - h) / 2f;
 
-		final float w = Core.SDP * 10;
-		final float h = Core.SDP * 2.5f;
-		title = new PictureBox((this.w - w) / 2, 0, w, h, -1);
+		final float w = Core.SDP * 8f;
+		final float h = Core.SDP * 1f;
+		final float marginTop = Core.SDP_H;
+		title = new PictureBox((this.w - w) / 2, marginTop, w, h, -1);
 
 		final float marginL = (this.w / 2) - Core.SDP * 5f;
 		final float marginR = (this.w / 2) + Core.SDP * 5f;
@@ -78,7 +82,7 @@ public class EndDialog extends BaseDialog implements Clickable, Updatable {
 		paint.setColor(Color.WHITE);
 		paint.setTextSize(Core.fm.getFontSize());
 		paint.setAntiAlias(true);
-		float y = title.y + title.h;
+		float y = title.y + title.h + marginTop;
 		float margin = Core.SDP * 0.1f;
 		for(int i = 0; i < labels.length; i++) {
 			labels[i] = new Label(marginL, y, paint, LABEL_STRINGS[i]);
@@ -87,12 +91,16 @@ public class EndDialog extends BaseDialog implements Clickable, Updatable {
 			y += labels[i].h + margin;
 		}
 
-		final float btnW = Core.SDP * 2;
-		final float btnH = Core.SDP * 2;
+		final float btnW = Core.SDP * 2.5f;
+		final float btnH = Core.SDP;
+		
+		final float mR = Core.SDP_H;
+		final float marginBetween = Core.SDP_H * 0.5f;
 
-		btnRetry = new Button(this.w - btnW * 2, this.h - btnH, btnW, btnH, R.drawable.button_bg_pressed, "Retry", paint);
-		btnBack = new Button(this.w - btnW, this.h - btnH, btnW, btnH, R.drawable.button_bg_pressed, "Back", paint);
-
+		btnRetry = new Button(this.w - btnW - mR, this.h - btnH - mR, btnW, btnH, R.drawable.custom_button_bg, "Retry", paint);
+		btnBack = new Button(this.w - btnW * 2 - mR - marginBetween, this.h - btnH - mR, btnW, btnH, R.drawable.custom_button_bg, "Back", paint);
+		btnOk = new Button(this.w - btnW - mR, this.h - btnH - mR, btnW, btnH, R.drawable.custom_button_bg, "Ok", paint);
+		
 		btnRetry.setOnClickListener(new OnClickListener() {
 
 			@Override
@@ -104,6 +112,15 @@ public class EndDialog extends BaseDialog implements Clickable, Updatable {
 		});
 
 		btnBack.setOnClickListener(new OnClickListener() {
+
+			@Override
+			public void onClick(Button sender) {
+				Core.handler.sendEmptyMessage(MainActivity.MSG_FINISH);
+			}
+
+		});
+		
+		btnOk.setOnClickListener(new OnClickListener() {
 
 			@Override
 			public void onClick(Button sender) {
@@ -124,11 +141,18 @@ public class EndDialog extends BaseDialog implements Clickable, Updatable {
 		this.snapshot = playerSnapshot;
 		this.success = success;
 
+		buttons.clear();
+		
 		if(success) {
 			title.setTexture(R.drawable.mission_success_message);
+			
+			buttons.add(btnOk);
 		} else {
 			// failed...
 			title.setTexture(R.drawable.mission_failed_message);
+			
+			buttons.add(btnBack);
+			buttons.add(btnRetry);
 		}
 
 		lblVals[0].setText(String.valueOf(playerSnapshot.kills));
@@ -147,8 +171,6 @@ public class EndDialog extends BaseDialog implements Clickable, Updatable {
 
 		transparency = 0;
 		title.transparency = 0;
-		
-		visible = true;
 
 		Core.gu.addUiUpdatable(this);
 	}
@@ -169,22 +191,18 @@ public class EndDialog extends BaseDialog implements Clickable, Updatable {
 	}
 	
 	@Override
-	public boolean onTouchEvent(int action, int x_, int y_) {
-		if (!visible) return false;
-
-		final int x = (int) (x_ - this.x);
-		final int y = (int) (y_ - this.y);
+	public boolean onTouchEvent(int action, float x_, float y_) {
+		final float x = Core.originalTouchX - this.x;
+		final float y = Core.originalTouchY - this.y;
 		
-		btnRetry.onTouchEvent(action, x, y);
-		btnBack.onTouchEvent(action, x, y);
+		for(Button b : buttons)
+			b.onTouchEvent(action, x, y);
 		
 		return true;
 	}
 
 	@Override
 	public void draw(float offX, float offY) {
-		if (!visible) return;
-		
 		super.draw(0, 0);
 		if(transitioning) {
 			title.draw(x, y);
@@ -196,8 +214,8 @@ public class EndDialog extends BaseDialog implements Clickable, Updatable {
 				lblVals[i].draw(x, y);
 			}
 
-			btnRetry.draw(x, y);
-			btnBack.draw(x, y);
+			for(Button b : buttons)
+				b.draw(x, y);
 		}
 	}
 
@@ -215,9 +233,17 @@ public class EndDialog extends BaseDialog implements Clickable, Updatable {
 
 		btnRetry.refresh();
 		btnBack.refresh();
+		btnOk.refresh();
 	}
-
-	public void hide() {
-		visible = false;
+	
+	@Override
+	public boolean isCancelable() {
+		return false;
+	}
+	
+	@Override
+	public void dismiss() {
+		// if the user tries to dismiss this dialog, default to the back button...
+		btnBack.click();
 	}
 }

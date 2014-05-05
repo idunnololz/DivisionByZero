@@ -10,9 +10,11 @@ import com.ggstudios.divisionbyzero.StateManager.UserLevelData;
 import com.ggstudios.utils.DebugLog;
 import com.ggstudios.widget.LevelMapBackground;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.SparseArray;
@@ -33,11 +35,11 @@ import android.widget.TextView;
 import android.widget.Button;
 
 public class ActivityLevelSelection extends BaseActivity {
-	private static final String TAG = "ActivityLevelSelection";
+	private static final String TAG = ActivityLevelSelection.class.getSimpleName();
 
 	private static final int LEVEL_DEPTH_DP = 40;
 
-	private ScrollView superView;
+	//private ScrollView superView;
 	private RelativeLayout layout;
 	private ImageView imgTitle;
 	private ImageView imgBanner;
@@ -47,12 +49,12 @@ public class ActivityLevelSelection extends BaseActivity {
 
 	private DisplayMetrics displayMetrics;
 
-	private static final int ANIMATION_DURATION = 200;
-	private static final int ALPHA_ANIMATION_DURATION = 1000;
+	private static final int ANIMATION_DURATION = 300;
 
 	private LevelMap lm;
 	private StateManager stateMgr;
 
+	@SuppressLint("NewApi")
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -61,7 +63,7 @@ public class ActivityLevelSelection extends BaseActivity {
 
 		setContentView(R.layout.level_selection);
 
-		superView = (ScrollView) findViewById(R.id.superView);
+		//superView = (ScrollView) findViewById(R.id.superView);
 		layout = (RelativeLayout) findViewById(R.id.layout);
 		imgTitle = (ImageView) findViewById(R.id.imgTitle);
 		imgBanner = (ImageView) findViewById(R.id.imgBanner);
@@ -75,8 +77,13 @@ public class ActivityLevelSelection extends BaseActivity {
 		// And then on your layout
 		layout.startAnimation(alpha);
 
-		imgTitle.setAlpha((int)(ActivityMainMenu.ALPHA_TITLE * 255));
-		imgBanner.setAlpha((int)(ActivityMainMenu.ALPHA_BANNER * 255));
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+			imgTitle.setAlpha((int)(ActivityMainMenu.ALPHA_TITLE * 255));
+			imgBanner.setAlpha((int)(ActivityMainMenu.ALPHA_BANNER * 255));
+		} else {
+			imgTitle.setImageAlpha((int)(ActivityMainMenu.ALPHA_TITLE * 255));
+			imgBanner.setImageAlpha((int)(ActivityMainMenu.ALPHA_BANNER * 255));	
+		}
 
 		displayMetrics = getResources().getDisplayMetrics();
 
@@ -87,12 +94,14 @@ public class ActivityLevelSelection extends BaseActivity {
 			vto.addOnGlobalLayoutListener(new OnGlobalLayoutListener() {  
 				@Override  
 				public void onGlobalLayout() {
-					txtPageTitle.getViewTreeObserver().removeGlobalOnLayoutListener(this);
+					if (Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN) {
+						txtPageTitle.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+					} else {
+						txtPageTitle.getViewTreeObserver().removeGlobalOnLayoutListener(this);
+					}
 
-					final float delta = -txtPageTitle.getRight();
-					Animation a = new TranslateAnimation(delta, 0, 0, 0);
+					Animation a = new AlphaAnimation(0f, 1f);
 					a.setDuration(ANIMATION_DURATION);
-					a.setInterpolator(new DecelerateInterpolator());
 					txtPageTitle.startAnimation(a);
 
 					loadMap();
@@ -122,7 +131,14 @@ public class ActivityLevelSelection extends BaseActivity {
 
 			@Override
 			public void onSavedStateChanged() {
-				refreshSavedState();
+				runOnUiThread(new Runnable() {
+
+					@Override
+					public void run() {
+						refreshSavedState();
+					}
+					
+				});
 			}
 
 		});
@@ -159,12 +175,13 @@ public class ActivityLevelSelection extends BaseActivity {
 					img.measure(MeasureSpec.makeMeasureSpec(RelativeLayout.LayoutParams.WRAP_CONTENT, MeasureSpec.EXACTLY), 
 							MeasureSpec.makeMeasureSpec(RelativeLayout.LayoutParams.WRAP_CONTENT, MeasureSpec.EXACTLY));
 					imgSize = img.getMeasuredWidth();
+					imgSize = Math.min(imgSize, 100);
 				}
 
 				int marginLeft = toPixels(10);
 
 				// the margin between points calculated by doing totalDistance / num_points;
-				int pointMargin = (superView.getWidth() - marginLeft * 2 - imgSize) / lm.getTopNode().getHeight();
+				int pointMargin = (layout.getWidth() - marginLeft * 2 - imgSize) / lm.getTopNode().getHeight();
 
 				ImageView lastView = null;
 
@@ -192,7 +209,7 @@ public class ActivityLevelSelection extends BaseActivity {
 
 					params.addRule(RelativeLayout.ALIGN_PARENT_LEFT, RelativeLayout.TRUE);
 					params.addRule(RelativeLayout.ALIGN_PARENT_TOP, RelativeLayout.TRUE);
-					params.setMargins(marginLeft + node.depth * pointMargin, (superView.getHeight() - imgSize) / 2 + toPixels(node.hintY * LEVEL_DEPTH_DP * -1), 0, 0);
+					params.setMargins(marginLeft + node.depth * pointMargin, (layout.getHeight() - imgSize) / 2 + toPixels(node.hintY * LEVEL_DEPTH_DP * -1), 0, 0);
 
 					act.runOnUiThread(new Runnable() {
 
@@ -214,12 +231,16 @@ public class ActivityLevelSelection extends BaseActivity {
 				if(vto.isAlive()) {
 					vto.addOnGlobalLayoutListener(new OnGlobalLayoutListener() {
 
+						@SuppressWarnings("deprecation")
 						@Override
 						public void onGlobalLayout() {
 							lv.getViewTreeObserver().removeGlobalOnLayoutListener(this);
 
 							DebugLog.d(TAG, "layout height: " + layout.getHeight());
+							DebugLog.d(TAG, "map height: " + levelMapBg.getHeight());
 
+
+							DebugLog.d(TAG, "t: " + levelMapBg.getTop());
 							final RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
 									RelativeLayout.LayoutParams.MATCH_PARENT, layout.getHeight());
 							params.addRule(RelativeLayout.ALIGN_PARENT_LEFT, RelativeLayout.TRUE);
@@ -227,9 +248,10 @@ public class ActivityLevelSelection extends BaseActivity {
 
 							levelMapBg.setData(lm.getRaw());
 							levelMapBg.setLayoutParams(params);
+							layout.requestLayout();
 
 							Animation animation = new AlphaAnimation(0f, 1f);
-							animation.setDuration(ALPHA_ANIMATION_DURATION);
+							animation.setDuration(ANIMATION_DURATION);
 							animation.setFillAfter(true);
 							animation.setFillEnabled(true);
 							layout.startAnimation(animation);

@@ -154,10 +154,10 @@ public class GameRenderer implements Renderer {
 		GLES20.glLinkProgram(hProgram);                  // creates OpenGL program executables
 
 		// get handles
-		Core.U_TRANSLATION_MATRIX_HANDLE = GLES20.glGetUniformLocation(hProgram, "uTransMatrix");
-		Core.U_TEXTURE_HANDLE = GLES20.glGetUniformLocation(hProgram, "u_Texture");	
-		Core.U_MIXED_MATRIX_HANDLE 	= GLES20.glGetUniformLocation(hProgram, "uConstantMatrix");
-		Core.U_TEX_COLOR_HANDLE = GLES20.glGetUniformLocation(hProgram, "u_Color");
+		Core.U_TRANSLATION_MATRIX_HANDLE 	= GLES20.glGetUniformLocation(hProgram, "uTransMatrix");
+		Core.U_TEXTURE_HANDLE 				= GLES20.glGetUniformLocation(hProgram, "u_Texture");	
+		Core.U_MIXED_MATRIX_HANDLE 			= GLES20.glGetUniformLocation(hProgram, "uConstantMatrix");
+		Core.U_TEX_COLOR_HANDLE 			= GLES20.glGetUniformLocation(hProgram, "u_Color");
 
 		/*
 		 * Set up GL for use for the first time. These
@@ -183,6 +183,7 @@ public class GameRenderer implements Renderer {
 	public synchronized void onDrawFrame(GL10 gl) {
 		if(!multicoreDevice)
 			restrictFps();
+		
 		logReport();
 
 		beginScene();
@@ -199,9 +200,9 @@ public class GameRenderer implements Renderer {
 		Core.drawables[9].draw(Core.offX, Core.offY);
 	}
 
-	long startTimeInNano = System.currentTimeMillis();
-	int frames = 0;
-	final int SECONDS = PROFILE_REPORT_DELAY / 1000;
+	private long startTimeInNano = System.currentTimeMillis();
+	private int frames = 0;
+	private static final int SECONDS = PROFILE_REPORT_DELAY / 1000;
 
 	private void logReport() {
 		frames++;
@@ -212,7 +213,7 @@ public class GameRenderer implements Renderer {
 		}
 	}
 
-	long endTime, dt, startTime = System.currentTimeMillis();
+	private long endTime, dt, startTime = System.currentTimeMillis();
 
 	private void restrictFps() {
 		endTime = System.currentTimeMillis();
@@ -243,7 +244,7 @@ public class GameRenderer implements Renderer {
 		startTime = System.currentTimeMillis();
 
 		boolean surfaceChanged = false;
-		if(Core.canvasWidth != width || Core.canvasHeight != height) {
+		if(Core.canvasWidth != -1 && (Core.canvasWidth != width || Core.canvasHeight != height) ) {
 			surfaceChanged = true;
 		}
 
@@ -260,11 +261,6 @@ public class GameRenderer implements Renderer {
 		Core.onZoomChanged();
 
 		initObjects();
-
-		if(Core.game.getState() != Game.STATE_CLEAN_START) {
-			// don't refresh if the game hasn't even been set up yet
-			Core.game.refresh();
-		}
 
 		float[] tempTransMatrix = new float[16];
 		float[] tempProjMatrix = new float[16];
@@ -285,10 +281,17 @@ public class GameRenderer implements Renderer {
 		Matrix.multiplyMM(Core.mixedMatrix, 0, tempProjMatrix, 0, tempTransMatrix, 0);
 
 		DebugLog.d(TAG, "done onSurfaceChanged");
-
+		
 		Core.game.onSurfaceCreated();
 		if(surfaceChanged)
 			Core.game.notifySurfaceChanged();
+		
+		if(Core.game.getState() == Game.STATE_KILLED) {
+			Core.game.restarted();
+		} else if(Core.game.getState() != Game.STATE_CLEAN_START) {
+			// don't refresh if the game hasn't even been set up yet
+			Core.game.refresh();
+		}
 
 		restoreTextureHandle();
 
@@ -306,6 +309,8 @@ public class GameRenderer implements Renderer {
 			if(!before) {
 				Core.gu.unpause();
 			}
+			
+			Core.game.onSaveFileLoaded();
 		}
 
 		Core.game.onLoadFinished();

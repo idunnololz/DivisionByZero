@@ -1,15 +1,15 @@
 // the a will allow us to specify map information
-// specify that we are using map #1
+// specify that we are using map #0
 a 0
 // file reader will then continue to read map info until it has found a "e" on a line
 // which denotes the end of the map specification
 
 #1
-$Initialization
+$No Ghosts
 
 // initial lives and gold
-l 20
-g 1000
+l 10
+g 600
 
 // we may also change default map settings such as creep drop off
 // and creep destination...
@@ -35,7 +35,7 @@ g 1000
 // the seventh is a boolean of whether it's a sub-wave
 //
 // here is a sample:
-// s 1 10 20 1 10      
+// s 1 10 20 1 10     
 //   t nu sr h reward
 //   y mb    p
 //   p er sp
@@ -44,41 +44,43 @@ g 1000
 //        ra
 //        te
 
-//1
-s 1 20 1000 10 10
-
-p 30000
-
-//2
-s 2 20 1000 15 10
-
-p 30000
-
-//3
-s 3 30 1000 20 15
-
-p 30000
-
-//tip
-m The enemies on the next wave move a bit faster. Try building trash towers to slow them down!
-
-//4
-s 4 40 800 35 20
-
-p 30000
-
-//tip
-m Upgrades are an important aspect of the game. Updating turrets increases their attack speed, damage and range!
-
-//5
-s 1 20 800 50 25
-
-p 30000
-
-//6
-s 1 20 800 70 25
-
-p 30000
-
-//7
-s 1 20 800 100 25
+//type	num	spwnT	hp	reward
+s 1 	20 	1400 	10 	10	// 1
+p 40000
+s 1 	20 	1300 	20 	10	// 2
+p 40000
+s 1 	20 	1300 	30 	10	// 3
+p 40000
+s 1 	20 	1100 	40 	10	// 4
+p 40000
+s 2 	20 	1000 	50 	15	// 5 	speedlings
+p 40000
+s 3 	20 	1000 	40 	15 	// 6 	heavy
+p 40000
+s 1 	20 	1100 	80 15	// 7
+p 40000
+s 8 	20 	1000 	100 20	// 8	regenerator
+p 40000
+s 2 	30 	700 	100 20	// 9	speedlings
+p 40000
+s 5 	20 	1000 	110 15	// 10	splitter
+p 40000
+s 8 	40 	1000 	130 20	// 11	regenerator
+p 40000
+s 3 	40 	1000 	150 20	// 12
+p 40000
+s 2 	40 	1000 	150 20	// 13
+p 40000
+s 1 	40 	1000 	200 20	// 14
+p 40000
+s 3 	40 	1000 	250 25	// 15
+p 40000
+s 1 	40 	1000 	300 25	// 16
+p 40000
+s 3 	40 	1000 	350 25	// 17
+p 40000
+s 5 	40 	1000 	400 25	// 18
+p 40000
+s 8 	40 	1000 	480 25	// 19
+p 40000
+s 2 	40 	1000 	550 25	// 20

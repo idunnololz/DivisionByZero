@@ -31,12 +31,7 @@ public class TextureManager {
 	public int get(int resId) {
 		if(resId < 0){
 			DebugLog.e(TAG, "Invalid resource id");
-
-			try {
-				throw new Exception();
-			} catch (Exception e) {
-				DebugLog.e(TAG, e);
-			}
+			DebugLog.e(TAG, new Exception());
 			return -1;
 		}
 
@@ -70,7 +65,12 @@ public class TextureManager {
 		loadTexture(R.drawable.mission_failed_message);
 		loadTexture(R.drawable.mission_success_message);
 		loadTexture(R.drawable.button_more);
+		loadTexture(R.drawable.division_machine);
+		loadTexture(R.drawable.spark);
 
+		// tower menu
+		loadTexture(R.drawable.info_icon);
+		
 		// wave_control
 		loadTexture(R.drawable.wave_control_play);
 		loadTexture(R.drawable.wave_control_ff);
@@ -86,8 +86,11 @@ public class TextureManager {
 		loadTexture(R.drawable.window_bg);
 		
 		// controls
+		loadTexture(R.drawable.button_bg_pressed);
 		loadTexture(R.drawable.zoom_control_in);
 		loadTexture(R.drawable.zoom_control_out);
+		loadTexture(R.drawable.dialog_button);
+		loadTexture(R.drawable.dialog_button_disabled);
 		
 		// sprite textures
 		loadTexture(R.drawable.sprite_normal0001);
@@ -110,6 +113,43 @@ public class TextureManager {
 		loadTexture(R.drawable.sprite_normal0018);
 		loadTexture(R.drawable.sprite_normal0019);
 		loadTexture(R.drawable.sprite_normal0020);
+		
+		loadTexture(R.drawable.sprite_regenerator0001);
+		loadTexture(R.drawable.sprite_regenerator0002);
+		loadTexture(R.drawable.sprite_regenerator0003);
+		loadTexture(R.drawable.sprite_regenerator0004);
+		loadTexture(R.drawable.sprite_regenerator0005);
+		loadTexture(R.drawable.sprite_regenerator0006);
+		loadTexture(R.drawable.sprite_regenerator0007);
+		loadTexture(R.drawable.sprite_regenerator0008);
+		loadTexture(R.drawable.sprite_regenerator0009);
+		loadTexture(R.drawable.sprite_regenerator0010);
+		loadTexture(R.drawable.sprite_regenerator0011);
+		loadTexture(R.drawable.sprite_regenerator0012);
+		loadTexture(R.drawable.sprite_regenerator0013);
+		loadTexture(R.drawable.sprite_regenerator0014);
+		loadTexture(R.drawable.sprite_regenerator0015);
+		loadTexture(R.drawable.sprite_regenerator0016);
+		loadTexture(R.drawable.sprite_regenerator0017);
+		loadTexture(R.drawable.sprite_regenerator0018);
+		loadTexture(R.drawable.sprite_regenerator0019);
+		loadTexture(R.drawable.sprite_regenerator0020);
+		
+		loadTexture(R.drawable.sprite_undying0002);
+		loadTexture(R.drawable.sprite_undying0003);
+		loadTexture(R.drawable.sprite_undying0004);
+		loadTexture(R.drawable.sprite_undying0005);
+		loadTexture(R.drawable.sprite_undying0006);
+		loadTexture(R.drawable.sprite_undying0007);
+		loadTexture(R.drawable.sprite_undying0008);
+		loadTexture(R.drawable.sprite_undying0009);
+		loadTexture(R.drawable.sprite_undying0010);
+		loadTexture(R.drawable.sprite_undying0011);
+		loadTexture(R.drawable.sprite_undying0012);
+		loadTexture(R.drawable.sprite_undying0013);
+		loadTexture(R.drawable.sprite_undying0014);
+		loadTexture(R.drawable.sprite_undying0015);
+		loadTexture(R.drawable.sprite_undying0016);
 
 		// towers
 		loadTexture(R.drawable.tower_atlas);

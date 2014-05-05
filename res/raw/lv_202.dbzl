@@ -1,0 +1,30 @@
+// the a will allow us to specify map information
+// specify that we are using map #0
+//# w  h  entry/exit pairs...
+a 0 17 11 4
+a__b____________2
+_________________
+_________________
+_________________
+_________________
+_________________
+_________________
+_________________
+_________________
+_________________
+1____________c__d
+2
+1 A B
+2 C D
+
+#3
+$Overly Complicated
+
+l 20
+g 1000
+
+//type	num	spwnT	hp	reward	path_id(optional)
+s 1 	20 	1400 	10 	10		a	// 1
+s 1 	20 	1300 	20 	10		b	// 2
+s 1 	20 	1300 	30 	10		c	// 3
+s 1 	20 	1100 	40 	10		d	// 4

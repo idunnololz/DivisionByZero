@@ -5,11 +5,13 @@ import java.util.List;
 
 import com.ggstudios.divisionbyzero.Button.OnClickListener;
 import com.ggstudios.utils.BitmapUtils;
+import com.ggstudios.utils.DebugLog;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.drawable.NinePatchDrawable;
 import android.view.MotionEvent;
 
 public class InGameMenu extends Drawable implements Clickable {
@@ -37,15 +39,22 @@ public class InGameMenu extends Drawable implements Clickable {
 	private PictureBox bg;
 
 	private boolean visible = false;
+	
+	private ConfirmDialog verifyDialog;
 
 	public InGameMenu() {
+		DebugLog.d(TAG, "Instance created!");
+		
 		textPaint = new Paint();
+		textPaint.setColor(Color.WHITE);
+		
+		verifyDialog = new ConfirmDialog();
 	}
 
 	public void build(float menuButtonW, float menuButtonH) {
+		drawables.clear();
 		textPaint.setTextSize(FONT_SIZE * Core.SDP);
-		textPaint.setColor(Color.WHITE);
-
+		
 		float maxWidth = 0;
 
 		for(int i = 0; i < MENU_ITEMS.length; i++) {
@@ -54,22 +63,43 @@ public class InGameMenu extends Drawable implements Clickable {
 				maxWidth = w;
 			}
 		}
-
+		
 		float itemHeight = ITEM_HEIGHT * Core.SDP;
 		float height = itemHeight * MENU_ITEMS.length;
 
 		w = maxWidth + menuButtonW + ITEM_LR_MARGIN * Core.SDP * 2f;
 		h = Math.max(height, menuButtonH);
+		
+		bg = new PictureBox(0, 0, w*1.2f, h*1.2f, -1);
 
-		generateBg();
+		verifyDialog.setMessage("Are you sure you want to restart this level?");
+		verifyDialog.setPositive("Yes", new OnClickListener(){
+
+			@Override
+			public void onClick(Button sender) {
+				verifyDialog.hide();
+				Core.game.restart();				
+			}
+			
+		});
+		
+		verifyDialog.setNegative("No", new OnClickListener() {
+
+			@Override
+			public void onClick(Button sender) {
+				verifyDialog.hide();
+			}
+			
+		});
+		
+		verifyDialog.build();
+
+		generateBg(menuButtonH);
 		drawables.add(bg);
 
-		Paint bg = new Paint();
-		bg.setColor(0x00000000);
-
-		float bx = menuButtonW, by = 0f;
+		float bx = menuButtonW + ITEM_LR_MARGIN * Core.SDP, by = bg.y;
 		for(int i = 0; i < MENU_ITEMS.length; i++) {
-			Button temp = new Button(bx, by, w - menuButtonW, itemHeight, MENU_ITEMS[i], textPaint, bg);
+			Button temp = new Button(bx, by, w - menuButtonW, itemHeight, MENU_ITEMS[i], textPaint);
 			by += itemHeight;
 
 			switch(i) {
@@ -82,7 +112,8 @@ public class InGameMenu extends Drawable implements Clickable {
 
 							@Override
 							public void run() {
-								Core.game.restart();
+								hide();
+								verifyDialog.show();
 							}
 							
 						});
@@ -109,17 +140,38 @@ public class InGameMenu extends Drawable implements Clickable {
 		}
 	}
 
-	private void generateBg() {
-		android.graphics.drawable.Drawable drawable = Core.context.getResources().getDrawable(R.drawable.menu_bg);
-		drawable.setBounds(0, 0, (int)w, (int)h);
+	private float factor = 0;
+	private void generateBg(float desiredSideButtonHeight) {
+		DebugLog.d(TAG, "BG gen'd!");
+		android.graphics.drawable.NinePatchDrawable drawable = (NinePatchDrawable) Core.context.getResources().getDrawable(R.drawable.menu_bg);
+		
+		float height = drawable.getIntrinsicHeight();
 
-		Bitmap bitmap = Bitmap.createBitmap((int)w, (int)h, Bitmap.Config.ARGB_8888);
+		// get the factor we need to scale this drawableto make it look good...
+		if(desiredSideButtonHeight > 0)
+			// subtract the 11 or so pixels protruding upwards...
+			factor = desiredSideButtonHeight / (height - 7);
+		else {
+			if(factor == 0) factor = 1f;
+		}
+		
+		int scaledWidth = (int) (w / factor);
+		int scaledHeight = (int) (h / factor);
+		drawable.setBounds(0, 0, scaledWidth, scaledHeight);
+		
+		Bitmap bitmap = Bitmap.createBitmap(scaledWidth, scaledHeight, Bitmap.Config.ARGB_8888);
 		Canvas canvas = new Canvas(bitmap);
 		drawable.draw(canvas);
 
 		textureHandle = BitmapUtils.loadBitmap(bitmap);
 
-		bg = new PictureBox(0, 0, w, h, -1);
+		
+		//bg.x -= (w - scaledWidth) * 0.25f;
+		bg.y -= (h - scaledHeight) * 0.25f;
+		/*
+		bg.w *= factor;
+		bg.h *= factor;
+		*/
 		bg.setTextureHandle(textureHandle);
 	}
 
@@ -133,10 +185,13 @@ public class InGameMenu extends Drawable implements Clickable {
 
 	@Override
 	public void refresh() {
-		generateBg();
+		DebugLog.d(TAG, "Refreshed!");
 		for(Drawable d : drawables) {
 			d.refresh();
 		}
+		generateBg(-1);
+		
+		verifyDialog.refresh();
 	}
 
 	public float getWidth() {
@@ -148,6 +203,7 @@ public class InGameMenu extends Drawable implements Clickable {
 	}
 
 	public void setPosition(float x, float y) {
+		DebugLog.d(TAG, "Pos set!");
 		this.x = x;
 		this.y = y;
 	}
@@ -161,15 +217,15 @@ public class InGameMenu extends Drawable implements Clickable {
 	}
 	
 	@Override
-	public boolean onTouchEvent(int action, int x_, int y_) {
+	public boolean onTouchEvent(int action, float x_, float y_) {
 		if(!visible) return false;
-		final int x = (int) (x_ - this.x);
-		final int y = (int) (y_ - this.y);
+		final float x = x_ - this.x;
+		final float y = y_ - this.y;
 		for(Clickable c : clickables) {
 			if(c.onTouchEvent(action, x, y)) return true;
 		}
 		
-		if(action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+		if(action == MotionEvent.ACTION_UP) {
 			hide();
 		}
 		return false;

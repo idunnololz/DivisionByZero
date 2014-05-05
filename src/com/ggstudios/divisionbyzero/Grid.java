@@ -1,5 +1,7 @@
 package com.ggstudios.divisionbyzero;
 
+import java.util.List;
+
 import com.ggstudios.utils.BitmapUtils;
 import com.ggstudios.utils.BufferUtils;
 import com.ggstudios.utils.DebugLog;
@@ -10,6 +12,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.util.Log;
 
 public class Grid extends PictureBox {
 	//the grid class is responsible for  drawing the game grid guide
@@ -18,10 +21,10 @@ public class Grid extends PictureBox {
 	private static final String TAG = "Grid";
 	
 	//original is 18x13
-	public static final int DEFAULT_TILES_ACROSS = 18;
-	public static final int DEFAULT_TILES_DOWN = 13;
+	private static final int DEFAULT_TILES_ACROSS = 18;
+	private static final int DEFAULT_TILES_DOWN = 13;
 
-	public boolean perfectFit;
+	private boolean perfectFit;
 	public float extraWidth, extraHeight;
 
 	private float tileW;
@@ -50,8 +53,14 @@ public class Grid extends PictureBox {
 		this.tilesAcross = across;
 		remeasure(width, height);
 	}
+	
+	public void sizeChanged(int newW, int newH) {
+		remeasure(newW, newH);
+	}
 
 	public void remeasure(final float width, final float height){
+		DebugLog.d(TAG, "remeasure(" + width + ", " + height + ")");
+		DebugLog.d(TAG, "tilesAcross: " + tilesAcross + " down " + tilesDown);
 		if(width == 0 || height == 0) return;
 
 		w = width;
@@ -102,8 +111,8 @@ public class Grid extends PictureBox {
 		gridW = tilesAcross * tileW;
 		gridH = tilesDown * tileH;
 
-		potWidth = Utils.findSmallestBase2((int)gridW);
-		potHeight = Utils.findSmallestBase2((int)gridH);
+		potWidth = Utils.findSmallestPot((int)gridW);
+		potHeight = Utils.findSmallestPot((int)gridH);
 
 		Bitmap bitmap = Bitmap.createBitmap((int)(potWidth), (int) (potHeight), Bitmap.Config.RGB_565);
 
@@ -118,20 +127,23 @@ public class Grid extends PictureBox {
 		paint.setStrokeWidth(lineThickness);
 		
 		if(bgResId > 0) {
-			BitmapFactory.Options opts = new BitmapFactory.Options();
-			opts.inScaled = false;
+			try {
+				BitmapFactory.Options opts = new BitmapFactory.Options();
+				opts.inScaled = false;
 
-			Bitmap bg = BitmapFactory.decodeResource(Core.context.getResources(), bgResId, opts);
+				Bitmap bg = BitmapFactory.decodeResource(Core.context.getResources(), bgResId, opts);
 
-			Paint p = new Paint(Paint.FILTER_BITMAP_FLAG);
-			p.setDither(true);
-			p.setAntiAlias(true);
-			
-			c.drawBitmap(bg, new Rect(0, 0, bg.getWidth(), bg.getHeight()), 
-					new Rect(0, 0, (int) (gridW + lineThickness), (int)(gridH + lineThickness)), 
-					p);
-			bg.recycle();
-			
+				Paint p = new Paint(Paint.FILTER_BITMAP_FLAG);
+				p.setDither(true);
+				p.setAntiAlias(true);
+
+				c.drawBitmap(bg, new Rect(0, 0, bg.getWidth(), bg.getHeight()), 
+						new Rect(0, 0, (int) (gridW + lineThickness), (int)(gridH + lineThickness)), 
+						p);
+				bg.recycle();
+			} catch (Exception e) {
+				DebugLog.e(TAG, e);
+			}
 		}
 
 		for(int i = 0; i < tilesAcross + 1; i++) {
@@ -142,6 +154,26 @@ public class Grid extends PictureBox {
 		for(int i = 0; i < tilesDown + 1; i++) {
 			final float p = i * tileW + 1;
 			c.drawLine(0, p, gridW, p, paint);
+		}
+		
+		// check if it's a custom map...
+		if(Core.lm.isCustomMap()) {
+			Paint blkPaint = new Paint();
+			blkPaint.setColor(Color.BLACK);
+			// if it is, we got some work to do...
+			List<String> strs = Core.lm.getCustomMapArgs();
+			int y = 0;
+			for(String s : strs) {
+				for(int i = 0; i < s.length(); i++) {
+					char ch = s.charAt(i);
+					if(ch == '@') {
+						// '@' denotes a "dead" square
+						// that is, no tower may be placed here nor can an enemy unit pass through here (except ghosts)
+						c.drawRect(i*tileW, y*tileH, (i+1)*tileW, (y+1)*tileH, blkPaint);
+					}
+				}
+				y++;
+			}
 		}
 
 		textureHandle = BitmapUtils.loadBitmap(bitmap, textureHandle);

@@ -5,28 +5,21 @@
     android:background="@color/Black"
     android:orientation="vertical" >
 
-    <ScrollView
-        android:id="@+id/superView"
+    <RelativeLayout
+        android:id="@+id/layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
-        android:scrollbars="none" >
+        android:orientation="vertical" >
 
-        <RelativeLayout
-            android:id="@+id/layout"
+        <com.ggstudios.widget.LevelMapBackground
+            android:id="@+id/levelMap"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" >
-            
-            <com.ggstudios.widget.LevelMapBackground
-                android:id="@+id/levelMap"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_alignParentTop="true"
-                android:layout_alignParentBottom="true"/>
-        </RelativeLayout>
-    </ScrollView>
+            android:layout_height="match_parent"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentTop="true" />
+    </RelativeLayout>
 
     <ImageView
         android:id="@+id/imgBanner"

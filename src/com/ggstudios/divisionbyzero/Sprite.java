@@ -8,7 +8,8 @@ import java.util.Random;
 import android.graphics.Rect;
 import android.opengl.GLES20;
 
-import com.ggstudios.divisionbyzero.DijkstraPathFinder.Node;
+import com.ggstudios.divisionbyzero.PathFinder.Node;
+import com.ggstudios.divisionbyzero.SpriteAnimation.OnAnimationComplete;
 import com.ggstudios.utils.DebugLog;
 
 import static fix.android.opengl.GLES20.glVertexAttribPointer;
@@ -20,19 +21,20 @@ import static fix.android.opengl.GLES20.glVertexAttribPointer;
  *
  */
 public class Sprite extends PictureBox implements Updatable{
-	private static final String TAG = "EnemySprite";
+	private static final String TAG = "Sprite";
 
 	private static int WEAKNESS_TEXTURE = -1;
 
+	// flags for sprite state...
 	public static final int STATE_OK		= 0x00000000;
 	public static final int STATE_STUN		= 0x00000001;
-	public static final int STATE_SLOW		= 0x00000010;
-	public static final int STATE_IMMUNE	= 0x00000100;
-	public static final int STATE_BOSS		= 0x00001000;
-	public static final int STATE_DEATH		= 0x00010000;
-	public static final int STATE_BURN		= 0x00100000;
-	public static final int STATE_WEAKNESS	= 0x01000000;
-	public static final int STATE_DECAY 	= 0x10000000;
+	public static final int STATE_SLOW		= 0x00000002;
+	public static final int STATE_IMMUNE	= 0x00000004;
+	public static final int STATE_BOSS		= 0x00000008;
+	public static final int STATE_DEATH		= 0x00000010;
+	public static final int STATE_BURN		= 0x00000020;
+	public static final int STATE_WEAKNESS	= 0x00000040;
+	public static final int STATE_DECAY 	= 0x00000080;
 	
 	public static final int
 	TYPE_REGULAR = 1,
@@ -40,15 +42,42 @@ public class Sprite extends PictureBox implements Updatable{
 	TYPE_HEAVY = 3,
 	TYPE_GHOST = 4,
 	TYPE_SPLITTER = 5,
-	TYPE_MINI = 6 /* spawned by splitter */;
+	TYPE_MINI = 6 /* spawned by splitter */,
+	TYPE_UNDYING = 7,
+	TYPE_REGENERATOR = 8;
 
+	public static final int
+	/*
+	 * TYPE_BOSS is used as a check to see if a sprite is a boss.
+	 * All boss units have the following effects:
+	 * 	- Halves the duration of all status changing effects
+	 *  - God armor - Reduces all incoming damage by 60%
+	 */
+	TYPE_BOSS = 999,
+	/*
+	 * Regular boss is the base boss type. It has no other special abilities.
+	 */
+	TYPE_BOSS_REGULAR = 1000,
+	/*
+	 * Extremely fast boss.
+	 */
+	TYPE_BOSS_REALLY_FAST = 1001,
+	/*
+	 * Supreme heavy boss completely ignores all status changing effects.
+	 */
+	TYPE_BOSS_SUPREME_HEAVY = 1002,
+	/*
+	 * Hopper boss can "hop" over towers!
+	 */
+	TYPE_BOSS_HOPPER = 1010;
+	
 	private float pathOffX, pathOffY;
 
 	private float velocity;
 	private float speedX, speedY;
 
-	private int hp;
-	private int maxHp;
+	private float hp;
+	private float maxHp;
 	
 	private int state = STATE_OK;
 	private float slowAmount = 0f;
@@ -57,7 +86,6 @@ public class Sprite extends PictureBox implements Updatable{
 	private float stunDuration = 0f;
 
 	private int gold;
-
 	private int type;
 
 	private boolean partiallyLoaded = false;
@@ -66,25 +94,35 @@ public class Sprite extends PictureBox implements Updatable{
 	private Node currentWayPoint;
 
 	// public for fast collision detection
-	Rect rect = new Rect();
+	public Rect rect = new Rect();
 
 	private float timeLeft;
 
 	private static final float HP_HEIGHT = 0.1f;
 	private int hpTexture;
 	private float percentHp;
-
+	
 	private boolean isAlive = true;
 	private boolean obstacle = true;
+	private boolean targetable = true;
 
+	private boolean hasDeathAnimation = false;
+	private int pathIndex;
+	
 	private SpriteAnimation animation;
+	private SpriteAnimation spawnAnimation;
+	private SpriteAnimation deathAnimation;
 
 	private static final SpriteAnimation ANIMATION_NORMAL = new SpriteAnimation();
+	private static final SpriteAnimation ANIMATION_REGENERATOR = new SpriteAnimation();
 
 	private Random random;
+	
+	private Map map;
 
 	public static void doOnce() {
 		Core.gu.addGameUpdatable(ANIMATION_NORMAL);
+		Core.gu.addGameUpdatable(ANIMATION_REGENERATOR);
 	}
 
 	public static void refreshResources() {
@@ -92,74 +130,72 @@ public class Sprite extends PictureBox implements Updatable{
 
 		ANIMATION_NORMAL.reset();
 
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0001, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0002, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0003, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0004, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0005, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0006, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0007, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0008, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0009, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0010, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0011, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0012, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0013, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0014, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0015, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0016, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0017, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0018, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0019, 0.1f);
-		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0020, 0.1f);
-	}
-
-	/**
-	 * This static function will initialize a partially loaded instance of
-	 * a sprite that can be loaded late. This is useful for reloading sprites
-	 * before an instance of GL can be obtained.
-	 * 
-	 * @param x
-	 * @param y
-	 * @param hp
-	 * @param gold
-	 * @param type
-	 * @return
-	 */
-	public static Sprite getPreloadedInstance(float x, float y, int hp, int gold, int type) {
-		Sprite t = new Sprite(0,0);
-		t.x = x;
-		t.y = y;
-		t.hp = hp;
-		t.maxHp = hp;
-		t.gold = gold;
-		t.type = type;
-
-		t.partiallyLoaded = true;
-
-		t.percentHp = 1.0f;
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0001, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0002, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0003, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0004, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0005, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0006, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0007, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0008, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0009, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0010, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0011, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0012, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0013, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0014, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0015, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0016, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0017, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0018, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0019, 0.033f);
+		ANIMATION_NORMAL.addFrame(R.drawable.sprite_normal0020, 0.033f);
 		
-		return t;
+		ANIMATION_REGENERATOR.reset();
+		
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0001, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0002, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0003, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0004, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0005, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0006, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0007, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0008, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0009, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0010, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0011, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0012, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0013, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0014, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0015, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0016, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0017, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0018, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0019, 0.1f);
+		ANIMATION_REGENERATOR.addFrame(R.drawable.sprite_regenerator0020, 0.1f);
 	}
 
-	public static Sprite getSampleInstance(int hp, int gold, int type) {
-		Sprite t = new Sprite(0,0);
-		t.hp = hp;
-		t.maxHp = hp;
-		t.gold = gold;
-		t.type = type;
-
-		t.partiallyLoaded = true;
-
-		t.percentHp = 1.0f;
-
-		return t;
-	}
-
-	private Sprite(float x, float y) {
-		super(x, y);
+	public Sprite() {
+		super(0, 0);
 
 		random = StateManager.getInstance().getRandom();
+		deathAnimation = new SpriteAnimation();
+		deathAnimation.setLoop(false);
+		spawnAnimation = new SpriteAnimation();
+		spawnAnimation.setLoop(false);
+	}
+	
+	public void preload(float hp, int gold, int type) {
+		this.hp = hp;
+		maxHp = hp;
+		this.gold = gold;
+		this.type = type;
+		
+		targetable = true;
+
+		this.partiallyLoaded = true;
+
+		this.percentHp = 1.0f;
 	}
 
 	boolean needToLoad() {
@@ -168,6 +204,9 @@ public class Sprite extends PictureBox implements Updatable{
 
 	@Override
 	public void draw(float offX, float offY) {
+		if(animation != null)
+			setTextureHandle(animation.getTextureHandle());
+		
 		super.draw(offX, offY);
 
 		if(!cull) {
@@ -217,8 +256,11 @@ public class Sprite extends PictureBox implements Updatable{
 	}
 
 	public void load(Map map) {
+		this.map = map;
 		partiallyLoaded = false;
-		currentWayPoint = map.getPathStart();
+		currentWayPoint = map.getPathStart(pathIndex);
+		
+		isVisible = true;
 		
 		switch(type) {
 		case TYPE_REGULAR:
@@ -245,16 +287,50 @@ public class Sprite extends PictureBox implements Updatable{
 			obstacle = false;
 
 			// ghosts have a special path
-			currentWayPoint = map.getGhostPathStart();
+			currentWayPoint = map.getGhostPathStart(pathIndex);
 			break;
 		case TYPE_SPLITTER:
-			super.setVBO(Core.GeneralBuffers.map_half_tile);
+			super.setVBO(Core.GeneralBuffers.map_tile);
 			super.setScale(0.7f);
 
 			animation = ANIMATION_NORMAL;
 			break;
+		case TYPE_MINI:
+			super.setVBO(Core.GeneralBuffers.map_half_tile);
+			super.setScale(0.5f);
+
+			animation = ANIMATION_NORMAL;
+			break;
+		case TYPE_UNDYING:
+			super.setVBO(Core.GeneralBuffers.map_half_tile);
+			super.setScale(1f);
+			
+			animation = ANIMATION_NORMAL;
+			
+			spawnAnimation.addFrame(R.drawable.sprite_undying0002, 0.05f);
+			spawnAnimation.addFrame(R.drawable.sprite_undying0003, 0.05f);
+			spawnAnimation.addFrame(R.drawable.sprite_undying0004, 0.05f);
+			spawnAnimation.addFrame(R.drawable.sprite_undying0005, 0.05f);
+			spawnAnimation.addFrame(R.drawable.sprite_undying0006, 0.05f);
+			spawnAnimation.addFrame(R.drawable.sprite_undying0007, 0.05f);
+			spawnAnimation.addFrame(R.drawable.sprite_undying0008, 0.05f);
+			spawnAnimation.addFrame(R.drawable.sprite_undying0009, 0.05f);
+			spawnAnimation.addFrame(R.drawable.sprite_undying0010, 0.05f);
+			spawnAnimation.addFrame(R.drawable.sprite_undying0011, 0.05f);
+			spawnAnimation.addFrame(R.drawable.sprite_undying0012, 0.05f);
+			spawnAnimation.addFrame(R.drawable.sprite_undying0013, 0.05f);
+			spawnAnimation.addFrame(R.drawable.sprite_undying0014, 0.05f);
+			spawnAnimation.addFrame(R.drawable.sprite_undying0015, 0.05f);
+			spawnAnimation.addFrame(R.drawable.sprite_undying0016, 0.05f);
+			break;
+		case TYPE_REGENERATOR: 
+			super.setVBO(Core.GeneralBuffers.map_half_tile);
+			super.setScale(1f);
+			
+			animation = ANIMATION_REGENERATOR;
+			break;
 		default:
-			DebugLog.e(TAG, "Sprite type does not exist.");
+			DebugLog.e(TAG, "Sprite type does not exist. Type: " + type);
 			break;
 		}
 		
@@ -286,10 +362,56 @@ public class Sprite extends PictureBox implements Updatable{
 	@Override
 	public boolean update(float dt) {
 		if(!isAlive) {
-			Core.game.reportKilledSprite(this);
+			targetable = false;
+			state = STATE_OK;
+			
+			if(type == TYPE_UNDYING && spawnAnimation != null) {
+				final SpriteAnimation ani = animation;
+				animation = spawnAnimation;
+				spawnAnimation.setOnAnimationCompleteListener(new OnAnimationComplete() {
+
+					@Override
+					public void onAnimationComplete() {
+						spawnAnimation = null;
+						
+						// resurrect this sprite
+						isAlive = true;
+						targetable = true;
+						animation = ani;
+						hp = maxHp;
+						percentHp = 1f;
+						Core.gu.addGameUpdatable(Sprite.this);
+					};
+					
+				});
+				Core.gu.addGameUpdatable(spawnAnimation);
+			} else {
+				Core.game.reportKilledSprite(this);
+			}
 		
-			//Sprite s = Sprite.getPreloadedInstance(this.x, this.y, hp, gold, TYPE_GHOST)
-			//Core.game.addEnemy(s);
+			if(type == TYPE_SPLITTER) {
+				// spawn 4 MINIs each with 1/4th the hp
+				// and no gold bonus...
+				
+				for(int i = 0; i < 4; i++) {
+					Sprite s = Core.game.spriteMgr.obtain();
+					
+					s.preload(maxHp / 4, 0, TYPE_MINI);
+
+					Core.game.addEnemy(s);
+					
+					// we have to do this after adding enemy 
+					// as adding the enemy will auto set it's position
+					s.x = this.x;
+					s.y = this.y;
+					
+					if(this.lastWayPoint == null) {
+						// if we somehow lost our parent node, get the closest node to this unit...
+						s.currentWayPoint = map.getClosestNode(s.x, s.y, pathIndex);
+					} else
+						s.currentWayPoint = this.lastWayPoint;
+				}
+			}
 			return false;
 		}
 
@@ -321,6 +443,16 @@ public class Sprite extends PictureBox implements Updatable{
 				}
 				return true;
 			}
+		}
+		
+		if(type == TYPE_REGENERATOR && hp < maxHp) {
+			float regenerationRate;	// in hp/second
+			
+			// regenerators regenerate 1/10th of their hp every second...
+			regenerationRate = (maxHp / 10f);
+			
+			hp += regenerationRate * dt;
+			percentHp = (float)hp / maxHp;
 		}
 
 		timeLeft -= dt;
@@ -355,9 +487,6 @@ public class Sprite extends PictureBox implements Updatable{
 
 		updateRect();
 
-		if(animation != null)
-			setTextureHandle(animation.getTextureHandle());
-
 		return true;
 	}
 
@@ -370,6 +499,16 @@ public class Sprite extends PictureBox implements Updatable{
 		}
 
 		int s = b.getStatus();
+		
+		if(type > TYPE_BOSS) {
+			// half durations if this is a boss
+			b.setDuration(b.getDuration() / 2f);
+		}
+		
+		if(type == TYPE_BOSS_SUPREME_HEAVY) {
+			// null status effects if this s a heavy boss...
+			s = STATE_OK;
+		}
 
 		switch(s) {
 		case STATE_OK:	// don't do anything
@@ -382,17 +521,23 @@ public class Sprite extends PictureBox implements Updatable{
 			if(type != TYPE_HEAVY) {
 				state |= s;
 				slowDuration = b.getDuration();
-				slowAmount = b.getExtra2() / 100f;
+				slowAmount = 1f - (b.getExtra2() / 100f);
 			}
 			break;
 		case STATE_STUN:
-			state |= s;
-			stunDuration = b.getDuration();
+			if(type != TYPE_HEAVY) {
+				state |= s;
+				stunDuration = b.getDuration();
+			}
 			break;
 		case STATE_DECAY:
 			state |= s;
 			int d = (int) (b.getExtra() * maxHp / hp);
 			applyDamage(d);
+			
+			if(b.parent != null) {
+				b.parent.updateDamageDealt(d);
+			}
 			break;
 		default:
 			break;
@@ -409,11 +554,20 @@ public class Sprite extends PictureBox implements Updatable{
 	private void applyDamage(int damage) {
 		switch(type) {
 		case TYPE_HEAVY:
-			if(damage < 5) return;
-			damage /= 2;
+			// heavy units take half damage...
+			int half = damage / 2;
+			half = Math.min(half, 30);
+			
+			damage -= half;
 			break;
 		default:
 			break;
+		}
+		
+		if(type > TYPE_BOSS) {
+			// this is a boss unit
+			// apply the effect of god armor
+			damage *= 0.4f;
 		}
 
 		if((state & STATE_WEAKNESS) != 0) {
@@ -448,7 +602,7 @@ public class Sprite extends PictureBox implements Updatable{
 	}
 
 	public void writeToStream(DataOutputStream stream) throws IOException {
-		stream.writeInt(hp);
+		stream.writeFloat(hp);
 		stream.writeInt(gold);
 		stream.writeInt(type);
 
@@ -460,13 +614,15 @@ public class Sprite extends PictureBox implements Updatable{
 
 		stream.writeFloat(speedX);
 		stream.writeFloat(speedY);
-		stream.writeInt(hp);
-		stream.writeInt(maxHp);
+		stream.writeFloat(hp);
+		stream.writeFloat(maxHp);
 		stream.writeInt(state);
 		stream.writeFloat(slowAmount);
 		stream.writeFloat(slowDuration);
 		stream.writeFloat(weaknessDuration);
 		stream.writeFloat(stunDuration);
+		
+		stream.writeInt(pathIndex);
 
 		if(lastWayPoint == null) {
 			stream.writeInt(-1);
@@ -481,54 +637,55 @@ public class Sprite extends PictureBox implements Updatable{
 		stream.writeFloat(timeLeft);
 	}
 
-	public static Sprite createFromStream(DataInputStream stream) throws IOException {
+	public void loadFromStream(DataInputStream stream) throws IOException {
 		Map map = Core.game.map;
 
-		Sprite s = getPreloadedInstance(0, 0, stream.readInt(), stream.readInt(), stream.readInt());
-		s.load(map);
+		preload(stream.readFloat(), stream.readInt(), stream.readInt());
+		load(map);
 
-		s.x = stream.readFloat();
-		s.y = stream.readFloat();
+		x = stream.readFloat();
+		y = stream.readFloat();
 
-		s.pathOffX = stream.readFloat();
-		s.pathOffY = stream.readFloat();
+		pathOffX = stream.readFloat();
+		pathOffY = stream.readFloat();
 
-		s.speedX = stream.readFloat();
-		s.speedY = stream.readFloat();
-		s.hp = stream.readInt();
-		s.maxHp = stream.readInt();
-		s.state = stream.readInt();
+		speedX = stream.readFloat();
+		speedY = stream.readFloat();
+		hp = stream.readFloat();
+		maxHp = stream.readFloat();
+		state = stream.readInt();
 
-		s.slowAmount = stream.readFloat();
-		s.slowDuration = stream.readFloat();
-		s.weaknessDuration = stream.readFloat();
-		s.stunDuration = stream.readFloat();
+		slowAmount = stream.readFloat();
+		slowDuration = stream.readFloat();
+		weaknessDuration = stream.readFloat();
+		stunDuration = stream.readFloat();
+		
+		pathIndex = stream.readInt();
 
-		s.percentHp = s.hp / (float)s.maxHp;
+		percentHp = hp / (float)maxHp;
 		
 		int x = stream.readInt();
 		int y = stream.readInt();
 		if(x == -1) {
-			s.lastWayPoint = null;
+			lastWayPoint = null;
 		} else {
-			s.lastWayPoint = map.getPathNode(x, y);
+			lastWayPoint = map.getPathNode(x, y, pathIndex);
 		}
 		
 		int nodeX = stream.readInt();
 		int nodeY = stream.readInt();
-		if(s.type == TYPE_GHOST) {
+		if(type == TYPE_GHOST) {
 			Node n = map.getGhostPathStart();
 			if(n.x == nodeX && n.y == nodeY) {
-				s.currentWayPoint = n;
+				currentWayPoint = n;
 			} else {
-				s.currentWayPoint = map.getPathNode(nodeX, nodeY);
+				currentWayPoint = map.getPathNode(nodeX, nodeY, pathIndex);
 			}
 		} else {
-			s.currentWayPoint = map.getPathNode(nodeX, nodeY);
+			currentWayPoint = map.getPathNode(nodeX, nodeY, pathIndex);
 		}
 		
-		s.timeLeft = stream.readFloat();
-		return s;
+		timeLeft = stream.readFloat();
 	}
 
 	public boolean isObstacle() {
@@ -539,7 +696,7 @@ public class Sprite extends PictureBox implements Updatable{
 		return STATS[type].speed;
 	}
 
-	public int getMaxHp() {
+	public float getMaxHp() {
 		return maxHp;
 	}
 	
@@ -547,27 +704,74 @@ public class Sprite extends PictureBox implements Updatable{
 		return STATS[type].desc;
 	}
 
-	private static class SpriteStats {
+	public static class SpriteStats {
+		String name;
+		
+		int color;
 		float speed; 	// in MAP_SDP
 		String desc;
 
-		private SpriteStats(float speed, String desc) {
+		private SpriteStats(String name, int color, float speed, String desc) {
+			this.name = name;
+			this.color = color;
 			this.speed = speed;
 			this.desc = desc;
 		}
 	}
 	
 	private static final SpriteStats STATS[] = new SpriteStats[] {
-		new SpriteStats(0, null),	// null sprite
-		new SpriteStats(1.2f, "A regular enemy."),
-		new SpriteStats(1.6f, "A very fast enemy."),
-		new SpriteStats(0.8f, "This enemy may be slow, but it ignore all insignificant damage and halves all other damage. This unit is immune to slow."),
-		new SpriteStats(1.0f, "This enemy can pass through towers and other obstacles!"),
-		new SpriteStats(1.0f, "This enemy will split into smaller enemies once killed."),
-		new SpriteStats(1.0f, "This is a child from a splitter enemy.")
+		/*				Name				Color		speed	sprite description				*/
+		new SpriteStats("Regular Enemy",	0x00000000, 0, 		null),	// null sprite
+		new SpriteStats("Regular Enemy",	0xFFB8B8B8, 1.3f, 	"A regular enemy."),
+		new SpriteStats("Speedling",		0xFF3B7DF7, 1.8f, 	"A very fast enemy."),
+		new SpriteStats("Heavy",			0xFFEB6CE6, 1.0f, 	"This enemy may be slow, but it reduces all damage taken. This unit is immune to slow and stun."),
+		new SpriteStats("Ghost",			0xFF51F071, 1.3f, 	"This enemy can pass through towers and other obstacles!"),
+		new SpriteStats("Splitter",			0xFFFAFA43, 1.3f, 	"This enemy will split into smaller enemies once killed."),
+		new SpriteStats("Mini",				0x00000000, 1.3f, 	"This is a child from a splitter enemy."),
+		new SpriteStats("Undying",			0xFFEA0000, 1.3f,	"This enemy can revive once after dying"),
+		new SpriteStats("Regenerator",		0xFFFFBB00, 1.3f, 	"This enemy can regenerate if it has not taken damage for an amount of time")
 	};
+	
+	private static final SpriteStats BOSS_STATS[] = new SpriteStats[] {
+		/*				Name				Color		speed	sprite description				*/
+		new SpriteStats("Regular Enemy",	0x00000000, 0, 		null),	// null sprite
+		new SpriteStats("Regular Boss",		0xFFB8B8B8, 1.3f, 	"A regular boss."),
+		new SpriteStats("Supreme Heavy",	0xFF3B7DF7, 1.3f, 	"This boss ignores all stuns and slows."),
+	};
+	
+	public static SpriteStats getSpriteStats(int type) {
+		return STATS[type];
+	}
 
 	public int getGoldReward() {
 		return gold;
+	}
+
+	public boolean isTargetable() {
+		return targetable;
+	}
+	
+	public boolean hasDeathAnimation() {
+		return hasDeathAnimation;
+	}
+	
+	private OnAnimationComplete deathComplete = new OnAnimationComplete() {
+
+		@Override
+		public void onAnimationComplete() {
+			Core.game.spriteMgr.removeDrawableStrict(Sprite.this);
+			Core.game.checkWaveClear();
+		}
+		
+	};
+	
+	public void playDeathAnimation() {
+		deathAnimation.setOnAnimationCompleteListener(deathComplete);
+		animation = deathAnimation;
+		Core.gu.addGameUpdatable(deathAnimation);
+	}
+	
+	public void setPathIndex(int pathIndex) {
+		this.pathIndex = pathIndex;
 	}
 }

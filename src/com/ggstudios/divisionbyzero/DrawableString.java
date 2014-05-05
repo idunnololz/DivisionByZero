@@ -5,7 +5,6 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 import com.ggstudios.divisionbyzero.FontManager.TextureRegion;
-import com.ggstudios.utils.BufferUtils;
 import com.ggstudios.utils.DebugLog;
 
 import android.opengl.GLES20;
@@ -16,7 +15,7 @@ import static fix.android.opengl.GLES20.glDrawElements;;
 public class DrawableString extends Drawable{
 	private static final String TAG = "DrawableString";
 
-	private static final int MAX_STRING_LEN = 15;
+	private static final int MAX_STRING_LEN = 100;
 
 	public static final int 
 	ALIGN_RIGHT = 1, ALIGN_LEFT = 2, ALIGN_CENTER = 3;
@@ -26,7 +25,7 @@ public class DrawableString extends Drawable{
 
 	private int alignment = ALIGN_LEFT;
 
-	int width, height;
+	float width, height;
 
 	float x, y;
 
@@ -39,6 +38,9 @@ public class DrawableString extends Drawable{
 	private FloatBuffer floatBuf;
 	
 	private float scale = 1f;
+	private float transparency = 1f;
+	
+	private boolean dirty = false;
 
 	private Runnable rebuild = new Runnable() {
 
@@ -116,6 +118,8 @@ public class DrawableString extends Drawable{
 
 			x += spacing[i];
 		}
+		
+		height = y + fm.cellH;
 
 		floatBuf.put(vertexBuffer, 0, bufferIndex)				// copy the array into the buffer
 		.position(0);							// set the buffer to read the first coordinate
@@ -157,6 +161,11 @@ public class DrawableString extends Drawable{
 
 	@Override
 	public void draw(float offX, float offY){
+		if(dirty) {
+			rebuild.run();
+			dirty = false;
+		}
+		
 		final float fx = x + offX;
 		final float fy = y + offY;
 
@@ -172,6 +181,7 @@ public class DrawableString extends Drawable{
 			Utils.translate(fx - (width / 2.0f), fy);
 			break;
 		}
+		
 		Utils.scale(scale);
 		GLES20.glUniformMatrix4fv(Core.U_TRANSLATION_MATRIX_HANDLE, 1, false, Core.matrix, 0);
 
@@ -181,7 +191,10 @@ public class DrawableString extends Drawable{
 		glVertexAttribPointer(Core.A_POSITION_HANDLE, 2, GLES20.GL_FLOAT, false, 4 * 4, 0);
 		glVertexAttribPointer(Core.A_TEX_COORD_HANDLE, 2, GLES20.GL_FLOAT, false, 4 * 4, 2 * 4);
 
+		Shader.setColorMultiply(1f, 1f, 1f, transparency);
 		glDrawElements(GLES20.GL_TRIANGLES, text.length() * 6, GLES20.GL_UNSIGNED_SHORT, 0);
+		Shader.setColorMultiply(1f, 1f, 1f, 1f);
+		
 		Core.gr.restoreTextureHandle();
 	}
 
@@ -191,7 +204,8 @@ public class DrawableString extends Drawable{
 	}
 
 	public void setText(String string) {		
-		setText(string, fm.getWidth(string));
+		// add one for floating point accuracy issues...
+		setText(string, fm.getWidth(string) + 1);
 	}
 
 	public void setText(String string, int maxWidth) {
@@ -203,10 +217,18 @@ public class DrawableString extends Drawable{
 
 		this.width = maxWidth;
 
-		Core.glView.queueEvent(rebuild);
+		dirty = true;
 	}
 	
 	public void setTextSize(float size) {
 		scale = size / fm.getFontSize();
+	}
+	
+	public void setScale(float scale) {
+		this.scale = scale;
+	}
+	
+	public void setTransparency(float t) {
+		transparency = t;
 	}
 }

@@ -20,6 +20,7 @@ public class ActivitySettings extends BaseActivity {
 	private ImageView imgBanner;
 	private StateManager stateMgr;
 	
+	@SuppressWarnings("deprecation")
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -49,9 +50,21 @@ public class ActivitySettings extends BaseActivity {
             @Override
             public void onClick(DialogInterface dialog, int id) {
                 stateMgr.clearLevelData();
+                stateMgr.clearUserData();
                 
                 // burn all data cached in memory >:D
                 stateMgr.getUserLevelData().clear();
+                
+                AlertDialog.Builder b = new AlertDialog.Builder(ActivitySettings.this);
+                b.setMessage("User data has been wiped.");
+                b.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+					
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						dialog.dismiss();
+					}
+				});
+                b.create().show();
             }
         })
         .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
@@ -59,7 +72,7 @@ public class ActivitySettings extends BaseActivity {
                 
             }
         });      
-		((TextView) dialogView.findViewById(R.id.text)).setText("This will wipe all data. Proceed?");
+		((TextView) dialogView.findViewById(R.id.text)).setText("This will wipe all user data. Proceed?");
 		
 		builder.create().show();
 	}

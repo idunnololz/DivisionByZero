@@ -2,6 +2,7 @@ package com.ggstudios.divisionbyzero;
 
 import java.util.List;
 
+import android.app.Activity;
 import android.content.Context;
 import android.opengl.GLSurfaceView;
 import android.os.Handler;
@@ -21,8 +22,8 @@ public class Core{
 	
 	static GLSurfaceView glView;
 	static GameRenderer gr;
-	static Game game;
 	static GameUpdater gu;
+	static Game game;
 	static Grid grid;
 	
 	static int currentLevelResId;
@@ -34,7 +35,7 @@ public class Core{
 	static float[] matrix = new float[16];
 	static float[] mixedMatrix = new float[16];
 	
-	static int originalTouchX, originalTouchY;
+	static float originalTouchX, originalTouchY;
 
 	final static int A_POSITION_HANDLE = 0;
 	final static int A_TEX_COORD_HANDLE = 2;
@@ -50,11 +51,17 @@ public class Core{
 
 	static boolean forceVisible;
 	
-	static float canvasWidth;
-	static float canvasHeight;
+	static float canvasWidth = -1;
+	static float canvasHeight = -1;
 	
+	/**
+	 * May be used as a hint on whether an object is on the screen or not.
+	 */
 	static float cullR, cullB;
 
+	/**
+	 * SDP and SDP_H are like DPs in Android and are density independent.
+	 */
 	static float SDP;
 	static float SDP_H;
 	
@@ -128,5 +135,9 @@ public class Core{
 		lm = null;
 		sm = null;
 		guiHandler = null;
+	}
+	
+	public static void finishActivity() {
+		((Activity)context).finish();
 	}
 }

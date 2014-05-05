@@ -10,6 +10,7 @@ public class PictureBox extends Drawable {
 	protected float x, y;
 	protected float w, h;
 	protected float drawingW, drawingH;
+	protected boolean center = false;
 
 	protected int textureHandle = -1, textureId = -1;
 
@@ -36,6 +37,17 @@ public class PictureBox extends Drawable {
 		this.y = y;
 	}
 
+	public PictureBox(float x, float y, float w, float h, int resId, boolean isCentered){
+		this.x = x;
+		this.y = y;
+		this.w = w;
+		this.h = h;
+		this.textureId = resId;
+		center = isCentered;
+
+		refresh();
+	}
+	
 	public PictureBox(float x, float y, float w, float h, int resId){
 		this.x = x;
 		this.y = y;
@@ -76,13 +88,24 @@ public class PictureBox extends Drawable {
 	public void generateBuffer(){
 		vbo = null;
 
+		float w, h;
 		if(drawingW <= 0) {
+			w = this.w;
+			h = this.h;
+		} else {
+			w = drawingW;
+			h = drawingH;
+		}
+		
+		if(center) {
+			float hw = w/2f;
+			float hh = h/2f;
 			float vertices[] = {
 					//Vertices according to faces
-					0, 	0, 	//Vertex 0
-					w, 	0, 	//v1
-					0, 	h, 	//v2
-					w, 	h, 	//v3
+					-hw, 	-hh, 	//Vertex 0
+					hw, 	-hh, 	//v1
+					-hw, 	hh, 	//v2
+					hw, 	hh, 	//v3
 			};
 
 			handle = BufferUtils.copyToBuffer(vertices);
@@ -90,9 +113,9 @@ public class PictureBox extends Drawable {
 			float vertices[] = {
 					//Vertices according to faces
 					0, 	0, 	//Vertex 0
-					drawingW, 	0, 	//v1
-					0, 	drawingH, 	//v2
-					drawingW, 	drawingH, 	//v3
+					w, 	0, 	//v1
+					0, 	h, 	//v2
+					w, 	h, 	//v3
 			};
 
 			handle = BufferUtils.copyToBuffer(vertices);
@@ -166,7 +189,7 @@ public class PictureBox extends Drawable {
 		this.scale = scale;
 	}
 
-	public void rotate(float angle) {
+	public void setAngle(float angle) {
 		this.angle = angle;
 	}
 }

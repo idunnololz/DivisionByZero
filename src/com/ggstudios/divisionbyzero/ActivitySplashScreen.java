@@ -15,6 +15,12 @@ public class ActivitySplashScreen extends BaseActivity {
 		
 		setContentView(R.layout.splash_screen);
 		
+		new Thread() {
+			public void run() {
+				StateManager.getInstance().loadUserInfo();
+			}
+		}.start();
+		
 		handler.postDelayed(new Runnable() {
 
 			@Override

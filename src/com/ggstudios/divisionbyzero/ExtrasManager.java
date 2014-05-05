@@ -41,11 +41,14 @@ public class ExtrasManager extends Drawable {
 
 	public void removeDrawable(PictureBox pb) {
 		int index = -1;
+		
+		// try to find the item to remove
 		for(int i = 0; i < len; i++)
 			if(pool[i] == pb) {
 				index = i;
 			}
 		
+		// we couldn't find the picturebox to remove...
 		if(index == -1) return;
 		else {
 			for(int i = index; i < len - 1; i++) {
@@ -55,5 +58,4 @@ public class ExtrasManager extends Drawable {
 			len--;
 		}
 	}
-
 }

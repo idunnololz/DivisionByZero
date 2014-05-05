@@ -8,6 +8,7 @@ public class ActivityAbout extends BaseActivity {
 	private ImageView imgTitle;
 	private ImageView imgBanner;
 	
+	@SuppressWarnings("deprecation")
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);

@@ -15,10 +15,11 @@ public class PauseMenu extends Drawable implements Clickable {
 	public void build() {
 		Paint paint = new Paint();
 		paint.setColor(0xFFFFFFFF);
+		paint.setTextSize(Core.SDP * 1.5f);
 		
 		bg = new PictureBox(0, 0, 
 				Core.canvasWidth, Core.canvasHeight, R.drawable.right_panel);
-		paused = new Label(0, 0, paint, "Paused", Core.SDP * 1.5f);
+		paused = new Label(0, 0, paint, "Paused");
 		paused.x = (Core.canvasWidth - paused.w) / 2.0f;
 		paused.y = (Core.canvasHeight - paused.h) / 2.0f;
 
@@ -56,7 +57,9 @@ public class PauseMenu extends Drawable implements Clickable {
 	}
 	
 	@Override
-	public boolean onTouchEvent(int action, int x, int y) {
+	public boolean onTouchEvent(int action, float x_, float y_) {
+		final float x = Core.originalTouchX;
+		final float y = Core.originalTouchY;
 		btnResume.onTouchEvent(action, x, y);
 		return true;
 	}

@@ -2,9 +2,10 @@ package com.ggstudios.divisionbyzero;
 
 import android.content.pm.PackageManager;
 import android.graphics.Paint;
-import android.graphics.Rect;
+import android.graphics.RectF;
 
 import com.ggstudios.divisionbyzero.Button.OnClickListener;
+import com.ggstudios.divisionbyzero.LevelManager.WaveChangeListener;
 import com.ggstudios.divisionbyzero.Player.OnGoldChangedListener;
 import com.ggstudios.divisionbyzero.Player.OnLivesChangedListener;
 import com.ggstudios.utils.DebugLog;
@@ -12,21 +13,30 @@ import com.ggstudios.utils.DebugLog;
 public class Hud extends Drawable implements Clickable, Updatable{
 	private static final String TAG  = "Hud";
 	private static final float OFF_SCREEN = -999f;
+	private static final float DEFAULT_MESSAGE_DURATION = 2f;
+	private static final float TEXT_CHANGE_ANIMATION_DURATION = 0.4f;
+	
+	public static final int HUD_LEFT_PANEL = 1,
+			HUD_RIGHT_PANEL = 2,
+			HUD_TOWER_MENU = 3,
+			HUD_WAVE_CONTROL = 4;
 	
 	private PictureBox leftPanel;
 	private TowerMenu rightPanel;
 	private WaveControlHud waveHud;
 	private PictureBox factionIcon;
 
-	private Rect leftPanelRect = new Rect();
-	private Rect rightPanelRect = new Rect();
+	private RectF leftPanelRect = new RectF();
+	private RectF rightPanelRect = new RectF();
 
 	private Button btnMore;
 	private Label lblGold;
 	private Label lblLives;
+	private Label lblWave;
 
 	private DrawableString txtGold;
 	private DrawableString txtLives;
+	private DrawableString txtWave;
 
 	private ShowLeftPanel leftUpdatable;
 	private ShowRightPanel rightUpdatable;
@@ -37,6 +47,15 @@ public class Hud extends Drawable implements Clickable, Updatable{
 	
 	private InGameMenu menu;
 	
+	private static final int MAX_MESSAGES = 6;
+	private int activeMessages = 0;
+	private Message[] messages = new Message[MAX_MESSAGES];
+	
+	private boolean animateGold = false, animateLives = false;
+	private float goldAnimationTime = 0f, livesAnimationTime = 0f;
+	
+	private boolean built = false;
+	
 	public Hud() { 
 		zoomControl = new ZoomControl();
 		waveHud = new WaveControlHud();
@@ -44,6 +63,14 @@ public class Hud extends Drawable implements Clickable, Updatable{
 	}
 
 	public void build() {
+		if(built) {
+			// rebuild will do less work and will not reset the state of some of the UI elements...
+			rebuild();
+			return;
+		}
+		built = true;
+		
+		menu = new InGameMenu();
 		DebugLog.d(TAG, "build()");
 		
 		supportsMultitouch = Core.context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN_MULTITOUCH);
@@ -68,29 +95,34 @@ public class Hud extends Drawable implements Clickable, Updatable{
 		p.setAntiAlias(true);
 
 		rightPanel.addTower(new Tower(0, 0, TowerLibrary.REGULAR, 0));
-		rightPanel.addTower(new Tower(0, 0, TowerLibrary.HEAVY, 0));
 		rightPanel.addTower(new Tower(0, 0, TowerLibrary.SPECIALIST, 0));
-		rightPanel.addTower(new Tower(0, 0, TowerLibrary.DIAMOND, 0));
-		rightPanel.addTower(new Tower(0, 0, TowerLibrary.CIRCLE, 0));
+		rightPanel.addTower(new Tower(0, 0, TowerLibrary.FLAKE, 0));
+		rightPanel.addTower(new Tower(0, 0, TowerLibrary.BRUTAL, 0));
 		rightPanel.build();
 
 		btnMore = new Button(leftPanel.w - Core.SDP, leftPanel.h - Core.SDP, Core.SDP, Core.SDP, R.drawable.button_more);
 		btnMore.setPadding((int)Core.SDP_H);
-		lblGold = new Label(Core.SDP * 2.5f, Core.SDP_H * 0.5f, p, "Gold");
+		lblGold = new Label(Core.SDP * 2.5f, Core.SDP * 0.25f, p, "Gold");
 		lblLives = new Label(Core.SDP * 2.5f, Core.SDP * 0.75f, p, "Lives");
-		txtGold = new DrawableString(Core.SDP * 6.5f, Core.SDP_H * 0.5f, Core.fm, "-",
+		lblWave = new Label(Core.SDP * 2.5f, Core.SDP * 1.25f, p, "Wave");
+		txtGold = new DrawableString(Core.SDP * 6.5f, Core.SDP * 0.25f, Core.fm, "-",
 				DrawableString.ALIGN_RIGHT);
 		txtLives = new DrawableString(Core.SDP * 6.5f, Core.SDP * 0.75f, Core.fm, "-", 
+				DrawableString.ALIGN_RIGHT);
+		txtWave = new DrawableString(Core.SDP * 6.5f, Core.SDP * 1.25f, Core.fm, "-", 
 				DrawableString.ALIGN_RIGHT);
 
 		menu.build(btnMore.w, btnMore.h);
 		
+		for(int i = 0; i < MAX_MESSAGES; i++) {
+			messages[i] = new Message(0, 0, Core.fm, "");
+			activeMessages = 0;
+		}
+		
 		btnMore.setOnClickListener(new OnClickListener() {
 
 			@Override
-			public void onClick(Button sender) {
-				DebugLog.d(TAG, "c");
-				
+			public void onClick(Button sender) {		
 				menu.setPosition(btnMore.x + leftPanel.x, btnMore.y + btnMore.h - menu.getHeight() + leftPanel.y);
 				menu.show();
 			}
@@ -106,6 +138,9 @@ public class Hud extends Drawable implements Clickable, Updatable{
 							Core.game.onGameOver(false);
 						} else {
 							txtLives.setText(String.valueOf(lives));
+							
+							livesAnimationTime = 0f;
+							animateLives = true;
 						}
 					}
 
@@ -115,9 +150,32 @@ public class Hud extends Drawable implements Clickable, Updatable{
 					@Override
 					public void onGoldChanged(int gold) {
 						txtGold.setText(String.valueOf(gold));
+						
+						goldAnimationTime = 0f;
+						animateGold = true;
 					}
 
 				});
+		
+		Core.lm.setOnWaveChangeListener(new WaveChangeListener() {
+
+			@Override
+			public void onWaveChange(int currentWave) {
+				txtWave.setText(String.valueOf(currentWave));
+			}
+			
+		});
+	}
+	
+	public void rebuild() {
+		// currently rebuild doesn't actually resize anything...
+		// TODO: make rebuild resize things!
+		
+		menu.build(btnMore.w, btnMore.h);
+	}
+	
+	public boolean isBuilt() {
+		return built;
 	}
 
 	private class ShowLeftPanel implements Updatable {
@@ -164,7 +222,7 @@ public class Hud extends Drawable implements Clickable, Updatable{
 
 			if(time < duration) {
 				float t = time;
-				t/=duration;
+				t /= duration;
 				rightPanel.x = -d * t * (t - 2) + START_X;
 				waveHud.x = rightPanel.x;
 				return true;
@@ -208,14 +266,21 @@ public class Hud extends Drawable implements Clickable, Updatable{
 		factionIcon.draw(leftPanel.x, leftPanel.y);
 		lblGold.draw(leftPanel.x, leftPanel.y);
 		lblLives.draw(leftPanel.x, leftPanel.y);
+		lblWave.draw(leftPanel.x, leftPanel.y);
+		
 		menu.draw(0, 0);
 		btnMore.draw(leftPanel.x, leftPanel.y);
 
 		txtGold.draw(leftPanel.x, leftPanel.y);
 		txtLives.draw(leftPanel.x, leftPanel.y);
-
+		txtWave.draw(leftPanel.x, leftPanel.y);
+		
 		if(!supportsMultitouch)
-			zoomControl.draw(offX, offY);
+			zoomControl.draw(0, 0);
+		
+		for(int i = 0; i < activeMessages; i++) {
+			messages[i].draw(0, 0);
+		}
 	}
 
 	@Override
@@ -241,6 +306,44 @@ public class Hud extends Drawable implements Clickable, Updatable{
 	public boolean update(float dt) {
 		rightPanel.update(dt);
 		waveHud.update(dt);
+		
+		for(int i = 0; i < activeMessages; i++) {
+			if(!messages[i].update(dt)) {
+				int end = activeMessages - 1;
+				Message temp = messages[end];
+				messages[end] = messages[i];
+				messages[i] = temp;
+				activeMessages--;
+				// since this element changed
+				// we need to reupdate it.
+				i--;
+			}
+		}
+		
+		if(animateGold) {
+			goldAnimationTime += dt;
+			
+			if(goldAnimationTime < TEXT_CHANGE_ANIMATION_DURATION) {
+				float t = goldAnimationTime / TEXT_CHANGE_ANIMATION_DURATION;
+				txtGold.setScale(0.2f * t * (t - 2) + 1.2f);
+			} else {
+				txtGold.setScale(1f);
+				animateGold = false;
+			}
+		}
+		
+		if(animateLives) {
+			livesAnimationTime += dt;
+			
+			if(livesAnimationTime < TEXT_CHANGE_ANIMATION_DURATION) {
+				float t = livesAnimationTime / TEXT_CHANGE_ANIMATION_DURATION;
+				txtLives.setScale(0.2f * t * (t - 2) + 1.2f);
+			} else {
+				txtLives.setScale(1f);
+				animateLives = false;
+			}
+		}
+		
 		return true;
 	}
 
@@ -253,9 +356,9 @@ public class Hud extends Drawable implements Clickable, Updatable{
 	}
 	
 	@Override
-	public boolean onTouchEvent(int action, int x_, int y_) {
-		final int x = Core.originalTouchX;
-		final int y = Core.originalTouchY;
+	public boolean onTouchEvent(int action, float x_, float y_) {
+		final float x = Core.originalTouchX;
+		final float y = Core.originalTouchY;
 		
 		if(rightPanel.onTouchEvent(action, x, y) || waveHud.onTouchEvent(action, x, y) || 
 				btnMore.onTouchEvent(action, x - (int)leftPanel.x, y - (int)leftPanel.y) ||
@@ -264,7 +367,7 @@ public class Hud extends Drawable implements Clickable, Updatable{
 		}
 		return leftPanelRect.contains(x, y) || 
 				rightPanelRect.contains(x, y) ||
-				zoomControl.onTouchEvent(action, x, y);	
+				(!supportsMultitouch && zoomControl.onTouchEvent(action, x, y));	
 	}
 
 	/**
@@ -274,5 +377,90 @@ public class Hud extends Drawable implements Clickable, Updatable{
 		waveHud.reset();
 		waveHud.generateWaveInfomation();
 	}
+	
+	public void hideMenu() {
+		menu.hide();
+	}
 
+	public void setGameSpeed(int speed) {
+		waveHud.setSpeed(speed);
+	}
+	
+	public void showMessage(String msg) {
+		Message free;
+		if(activeMessages == MAX_MESSAGES) {
+			float minY = messages[0].y;
+			free = messages[0];
+			for(int i = 1; i < MAX_MESSAGES; i++) {
+				if(messages[i].y < minY) {
+					minY = messages[i].y;
+					free = messages[i];
+				}
+			}
+		} else {
+			free = messages[activeMessages];
+		}
+		
+		for(int i = 0; i < activeMessages; i++) {
+			messages[i].y -= free.height;
+		}
+		
+		free.y = leftPanel.y - free.height;
+		free.x = leftPanel.x;
+		free.setText(msg);
+		free.time = 0;
+		free.duration = DEFAULT_MESSAGE_DURATION;
+		
+		if(activeMessages != MAX_MESSAGES) {
+			activeMessages++;
+		}
+	}
+
+	private static class Message extends DrawableString implements Updatable {
+		float time;
+		float duration;
+		
+		public Message(float x, float y, FontManager fm, String input) {
+			super(x, y, fm, input);
+		}
+
+		@Override
+		public boolean update(float dt) {
+			time += dt;
+			if(time < duration) {
+				float t = time/duration;
+				setTransparency(1 - t * t);
+			} else {
+				setTransparency(1f);
+				return false;
+			}
+			return true;
+		}
+		
+	}
+	
+	public RectF getRegion(int hudElementId) {
+		switch(hudElementId) {
+		case HUD_LEFT_PANEL:
+			return leftPanelRect;
+		case HUD_RIGHT_PANEL:
+			return rightPanelRect;
+		case HUD_TOWER_MENU:{
+			RectF rect = new RectF(rightPanelRect);
+			rect.bottom = (int) (rect.top + rightPanel.height);
+			return rect;}
+		case HUD_WAVE_CONTROL:{
+			RectF rect = new RectF(rightPanelRect);
+			rect.top = (int) (rect.top + rightPanel.height);
+			return rect;}
+		default:
+			DebugLog.e(TAG, "Attempting to retreieve invalid region",
+					new Exception());
+			return null;
+		}
+	}
+
+	public void setSelection(int selected) {
+		rightPanel.setSelectedIndex(selected);
+	}
 }

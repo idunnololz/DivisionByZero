@@ -92,8 +92,8 @@ public class PopupMenu extends Drawable implements Clickable {
 
 	private Bitmap genBgTexture(){
 		Bitmap bitmap = Bitmap.createBitmap(
-				Utils.findSmallestBase2((int)buttonSize), 
-				Utils.findSmallestBase2((int)buttonSize), 
+				Utils.findSmallestPot((int)buttonSize), 
+				Utils.findSmallestPot((int)buttonSize), 
 				Bitmap.Config.ARGB_8888);
 
 		bitmap.eraseColor(Color.TRANSPARENT);
@@ -191,7 +191,6 @@ public class PopupMenu extends Drawable implements Clickable {
 	@Override
 	public void draw(float offX, float offY) {
 		if(visible) {
-			//noob.draw(offX, offY);
 			for(MenuItem item: items) {
 				item.draw(offX, offY);
 			}
@@ -204,7 +203,7 @@ public class PopupMenu extends Drawable implements Clickable {
 	}
 
 	@Override
-	public boolean onTouchEvent(int action, int x_, int y_) {
+	public boolean onTouchEvent(int action, float x_, float y_) {
 		switch(action) {
 		case MotionEvent.ACTION_CANCEL:
 			for(MenuItem item: items) {
@@ -236,8 +235,6 @@ public class PopupMenu extends Drawable implements Clickable {
 				boolean hasLabel, OnClickListener listener) {
 
 			super(w, h);
-
-			setTextureType(TYPE_TEXTURE_ONLY);
 
 			icId = icResId;
 			this.hasLabel = hasLabel;

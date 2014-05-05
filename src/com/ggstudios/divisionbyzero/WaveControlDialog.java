@@ -6,7 +6,7 @@ import java.util.List;
 
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Rect;
+import android.graphics.RectF;
 
 import com.ggstudios.divisionbyzero.Button.OnClickListener;
 import com.ggstudios.divisionbyzero.LevelManager.SpawnEvent;
@@ -18,15 +18,13 @@ public class WaveControlDialog extends BaseDialog implements Clickable, Updatabl
 	
 	private static final DecimalFormat df = new DecimalFormat("#.##");
 	
-	private boolean visible = false;
-	
 	private List<Drawable> drawables = new ArrayList<Drawable>();
 	private List<DrawableString> vals = new ArrayList<DrawableString>();
 	
 	private Label lblDesc;
 	
 	private Button btnClose;
-	private Rect rect = new Rect();
+	private RectF rect = new RectF();
 	
 	public WaveControlDialog () { }
 	
@@ -53,8 +51,8 @@ public class WaveControlDialog extends BaseDialog implements Clickable, Updatabl
 		
 		rect.left = 0;
 		rect.top = 0;
-		rect.right = (int) (w);
-		rect.bottom = (int) (h);
+		rect.right = w;
+		rect.bottom = h;
 		
 		float bw = Core.SDP_H;
 		btnClose = new Button(w - bw - Core.SDP_H * 0.9f, Core.SDP_H * 0.9f, bw, bw, R.drawable.close);
@@ -109,8 +107,6 @@ public class WaveControlDialog extends BaseDialog implements Clickable, Updatabl
 	
 	@Override
 	public void draw(float offX, float offY) {
-		if(!visible) return;
-		
 		super.draw(0, 0);
 		
 		for(Drawable d : drawables) {
@@ -129,13 +125,11 @@ public class WaveControlDialog extends BaseDialog implements Clickable, Updatabl
 	}
 	
 	@Override
-	public boolean onTouchEvent(int action, int x, int y) {
-		if(!visible) return false;
-
-		final int finalX = (int) (x - this.x);
-		final int finalY = (int) (y - this.y);
+	public boolean onTouchEvent(int action, float x_, float y_) {
+		final float x = Core.originalTouchX - this.x;
+		final float y = Core.originalTouchY - this.y;
 		
-		return btnClose.onTouchEvent(action, finalX, finalY) || rect.contains(finalX, finalY);		
+		return btnClose.onTouchEvent(action, x, y) || rect.contains(x, y);		
 	}
 	
 	@Override
@@ -152,41 +146,13 @@ public class WaveControlDialog extends BaseDialog implements Clickable, Updatabl
 	}
 	
 	public void lightSetup(SpawnEvent event) {
-		switch(event.enemyType) {		
-		case Sprite.TYPE_REGULAR:
-			vals.get(0).setText("Regular Enemy");
-			break;
-		case Sprite.TYPE_SPEEDLING:
-			vals.get(0).setText("Speedling");
-			break;
-		case Sprite.TYPE_HEAVY:
-			vals.get(0).setText("Heavy");
-			break;
-		case Sprite.TYPE_GHOST:
-			vals.get(0).setText("Ghost");
-			break;
-		case Sprite.TYPE_SPLITTER:
-			vals.get(0).setText("Splitter");
-			break;
-		case Sprite.TYPE_MINI:
-			vals.get(0).setText("Mini");
-			break;
-		}
+		Sprite.SpriteStats stats = Sprite.getSpriteStats(event.enemyType);
+		vals.get(0).setText(stats.name);
+		vals.get(1).setText(String.valueOf(event.hp));
+		vals.get(2).setText(df.format(stats.speed));
+		vals.get(3).setText(String.valueOf(event.gold));
+		vals.get(4).setText(String.valueOf(event.numUnits));
 		
-		vals.get(1).setText(String.valueOf(event.sprites.get(0).getMaxHp()));
-		vals.get(2).setText(df.format(event.sprites.get(0).getMovementSpeed()));
-		vals.get(3).setText(String.valueOf(event.sprites.get(0).getGoldReward()));
-		vals.get(4).setText(String.valueOf(event.sprites.size()));
-		
-		lblDesc.setText(event.sprites.get(0).getDesc());
-	}	
-	
-	public void show() {
-		visible = true;
+		lblDesc.setText(stats.desc);
 	}
-	
-	public void hide() {
-		visible = false;
-	}
-
 }

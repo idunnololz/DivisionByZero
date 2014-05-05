@@ -11,7 +11,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.opengl.GLES20;
 import android.view.MotionEvent;
@@ -54,13 +54,13 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 
 	float x, y;
 
-	private Rect rect = new Rect();
+	private RectF rect = new RectF();
 
 	private List<Tower> towers = new ArrayList<Tower>();
 	private List<Drawable> drawables = new ArrayList<Drawable>();
 	private List<Label> labels = new ArrayList<Label>();
 	private List<Label> shadows = new ArrayList<Label>();
-	private List<Rect> precalculatedClickBounds = new ArrayList<Rect>();
+	private List<RectF> precalculatedClickBounds = new ArrayList<RectF>();
 
 	private int maxDisplay;
 	private int index = 0;
@@ -70,7 +70,7 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 	private int itemSelectedIndex = -1;
 
 	private Updatable selectionBoxUpdatable;
-	private Rect thisRegion;
+	private RectF thisRegion;
 
 	// scroll bar variables:
 
@@ -93,7 +93,11 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 	private float maxScrollLeft = 0f;
 	private float scrollBarTop;
 	private float touchSlop;
+	private boolean scrollEnabled = true;
+	// End of scroll bar variables...
 
+	private TowerInfoDialog towerInfoDialog;
+	
 	public TowerMenu(float x, float y) {
 		this.x = x;
 		this.y = y;
@@ -115,11 +119,13 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 		selectionBox = new PictureBox(0, 0, 
 				Core.SDP * MENU_HEIGHT, Core.SDP * MENU_HEIGHT, R.drawable.selection_box);
 
-		thisRegion = new Rect();
+		towerInfoDialog = new TowerInfoDialog();
+		
+		thisRegion = new RectF();
 		thisRegion.left = 0;
-		thisRegion.right = (int) width;
+		thisRegion.right = width;
 		thisRegion.top = 0;
-		thisRegion.bottom = (int) height;
+		thisRegion.bottom = height;
 
 		touchSlop = ViewConfiguration.get(Core.context).getScaledTouchSlop();
 
@@ -156,11 +162,11 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 				t.y = margin;
 				n++;
 
-				Rect r = new Rect();
-				r.top = (int) (t.y);
-				r.left = (int) (t.x);
-				r.bottom = (int) (r.top + t.h);
-				r.right = (int) (r.left + t.w);
+				RectF r = new RectF();
+				r.top = t.y;
+				r.left = t.x;
+				r.bottom = r.top + t.h;
+				r.right = r.left + t.w;
 
 				Label l = new Label(t.x, t.y, paint, String.valueOf(t.getCost()));
 				l.x += t.w - l.w;//t.x + (t.w - l.w) / 2f;
@@ -176,10 +182,20 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 
 			drawableLen = drawables.size();
 		}
+		
+		if(maxDisplay >= towers.size()) {
+			// if we can show everything in the menu then no need for scrolling...
+			scrollEnabled = false;
+		} else {
+			scrollEnabled = true;
+		}
+		
 		totalW = towers.size() * itemW;
 		maxScrollLeft = totalW - width;
 		scrollBarWidth = (maxDisplay / (float)towers.size()) * width;
 		genScrollBar((int) scrollBarWidth);
+		
+		towerInfoDialog.build();
 	}
 
 	public void setIndex(int index) {
@@ -187,6 +203,15 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 		this.end = index + maxDisplay;
 
 		DebugLog.d(TAG, "Beginning index set to: " + index + " end: " + end);
+	}
+	
+	public void setSelectedIndex(int index) {
+		if(index >= 0) {
+			this.itemSelected = true;
+			this.itemSelectedIndex = index;
+		} else {
+			this.itemSelected = false;
+		}
 	}
 
 	@Override
@@ -205,6 +230,7 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 			shadows.get(i).draw(x + scrollLeft, y);
 			labels.get(i).draw(x + scrollLeft, y);
 		}
+		
 		GLES20.glDisable(GLES20.GL_SCISSOR_TEST);
 
 		// draw our scroll bar...
@@ -230,7 +256,7 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 			labels.get(i).refresh();
 			shadows.get(i).refresh();
 		}
-
+		
 		genScrollBar((int) scrollBarWidth);
 	}
 
@@ -242,8 +268,8 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 		return true;
 	}
 
-	private int lastX, lastY;
-	private int startingX, startingY;
+	private float lastX;
+	private float startingX, startingY;
 	private boolean canceled = false;
 
 	public Tower getSelectedTower() {
@@ -253,17 +279,19 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 			return null;
 	}
 
-	public boolean onTouchEvent(int action, int x, int y) {
+	@Override
+	public boolean onTouchEvent(int action, float x, float y) {
 		switch(action) {
 		case MotionEvent.ACTION_UP:
+		{
 			if(canceled) return false;
 
-			final int xx = (int) (Core.originalTouchX - this.x - scrollLeft);
-			final int yy = (int) (Core.originalTouchY - this.y);
+			final float xx = Core.originalTouchX - this.x - scrollLeft;
+			final float yy = Core.originalTouchY - this.y;
 
 			// only those drawn can be clicked...
 			for(int i = index; i < end && i < drawableLen; i++){
-				final Rect r = precalculatedClickBounds.get(i);
+				final RectF r = precalculatedClickBounds.get(i);
 
 				if(r.contains(xx, yy)) {
 					itemSelectedIndex = i;
@@ -295,6 +323,8 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 										t--;
 										selectionBox.x = -d/2 * (t*(t-2) - 1) + START_X;
 									}
+
+									t = time / duration;
 									return true;
 								} else {
 									selectionBox.x = FINAL_X;
@@ -309,12 +339,13 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 				}
 			}
 			return false;
+		}
 		case MotionEvent.ACTION_MOVE:
 			if(!rect.contains(x, y)) return false;
 
-			if(canceled) {
+			if(canceled && scrollEnabled) {
 				// do scrolling here...
-				final int deltaX = x - lastX;
+				final float deltaX = x - lastX;
 
 				scrollLeft += deltaX;
 				if(scrollLeft > 0) scrollLeft = 0;
@@ -330,8 +361,8 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 				// refresh fade counter
 				timeLeft = FADE_TIME + SHOW_TIME;
 			} else {
-				final int deltaX2 = x - startingX;
-				final int deltaY2 = y - startingY;
+				final float deltaX2 = x - startingX;
+				final float deltaY2 = y - startingY;
 
 				if(Math.abs(deltaX2) > touchSlop || Math.abs(deltaY2) > touchSlop) {
 					canceled = true;
@@ -339,16 +370,34 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 			}
 
 			lastX = x;
-			lastY = y;
 
 			return true;
+		case Event.ACTION_DOUBLE_TAP:
+			final float xx = Core.originalTouchX - this.x - scrollLeft;
+			final float yy = Core.originalTouchY - this.y;
+
+			// only those drawn can be clicked...
+			for(int i = index; i < end && i < drawableLen; i++){
+				final RectF r = precalculatedClickBounds.get(i);
+
+				if(r.contains(xx, yy)) {
+					itemSelectedIndex = i;
+
+					Tower t = getSelectedTower();
+					if(t != null) {
+						towerInfoDialog.lightSetup(t.evoTree, t.level);
+						towerInfoDialog.show();
+						return true;
+					}
+				}
+			}
+		return false;
 		case MotionEvent.ACTION_DOWN:
 			if(!rect.contains(x, y)) return false;
 
 			canceled = false;
 
 			lastX = x;
-			lastY = y;
 
 			startingX = x;
 			startingY = y;
@@ -360,16 +409,22 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 	}
 
 	private void genScrollBar(int scrollBarWidth){
+		// this is the size of the texture to be created in pixels
+		// since this texture will be stretched to the right size
+		// it really doesn't matter what size the texture is... so 1 is chosen
+		// since it is POT and it takes very little memory.
+		final int FILL_TEXTURE_SIZE = 1;
+		
 		final int scrollBarHeight = (int) (SCROLL_BAR_HEIGHT_SDP * Core.SDP);
 
-		Bitmap bitmap = Bitmap.createBitmap(4, 4, Bitmap.Config.ARGB_8888);
+		Bitmap bitmap = Bitmap.createBitmap(FILL_TEXTURE_SIZE, FILL_TEXTURE_SIZE, Bitmap.Config.RGB_565);
 
 		bitmap.eraseColor(Color.TRANSPARENT);
 		Canvas canvas = new Canvas(bitmap);
 
 		Paint paint = new Paint();
 		paint.setColor(SCROLL_BAR_COLOR);
-		canvas.drawRect(0, 0, 4, 4, paint);
+		canvas.drawRect(0, 0, FILL_TEXTURE_SIZE, FILL_TEXTURE_SIZE, paint);
 
 		scrollBarTop = height - scrollBarHeight;
 
@@ -380,9 +435,10 @@ public class TowerMenu extends Drawable implements Clickable, Updatable {
 	}
 
 	public void notifyPositionChanged() {
-		rect.left = (int) x;
-		rect.right = (int) (rect.left + width);
-		rect.top = (int) y;
-		rect.bottom = (int) (rect.top + height);;
+		// re-adjust click bounds since this object's position changed...
+		rect.left = x;
+		rect.right = rect.left + width;
+		rect.top = y;
+		rect.bottom = rect.top + height;
 	}
 }

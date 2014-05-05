@@ -7,8 +7,6 @@ import java.io.InputStreamReader;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.ggstudios.divisionbyzero.Map.Builder;
-
 import android.content.Context;
 import android.util.SparseArray;
 
@@ -118,7 +116,7 @@ public class LevelMap {
 		String levelName;
 		int waveCount;
 		int difficulty;
-		int mapW, mapH;
+		int mapAcross, mapDown;
 
 		private static final int MAX_TILES_SMALL = 122;
 		private static final int MAX_TILES_MEDIUM = 200;		
@@ -132,7 +130,7 @@ public class LevelMap {
 		DIFFICULTY_EX = 5;
 
 		String getMapSize() {
-			int totalTiles = mapW * mapH;
+			int totalTiles = mapAcross * mapDown;
 			if(totalTiles < MAX_TILES_SMALL) {
 				return "Small";
 			} else if(totalTiles > MAX_TILES_MEDIUM) {
@@ -205,6 +203,7 @@ public class LevelMap {
 
 		public void loadLevelData(Context context) {
 			LevelManager lm = new LevelManager();
+			lm.setMockMode(true);
 			int id = getLevelResId(context);
 			if(id != 0) {
 				lm.loadLevelFromFile(context, id);
@@ -212,10 +211,15 @@ public class LevelMap {
 				levelInfo = new ExtraLevelInfo();
 				levelInfo.difficulty = lm.getLevelDifficulty();
 				levelInfo.levelName = lm.getLevelName();
-				Map.Builder builder = new Map.Builder();
-				builder.setType(lm.getMapType());
-				levelInfo.mapW = builder.getTileW();
-				levelInfo.mapH = builder.getTileH();
+				if(lm.isCustomMap()) {
+					levelInfo.mapAcross = lm.getCustomMapW();
+					levelInfo.mapDown = lm.getCustomMapH();
+				} else {
+					Map.Builder builder = new Map.Builder();
+					builder.setType(lm.getMapType());
+					levelInfo.mapAcross = builder.getTilesAcross();
+					levelInfo.mapDown = builder.getTilesDown();
+				}
 				levelInfo.waveCount = lm.getWaveCount();
 			}
 		}

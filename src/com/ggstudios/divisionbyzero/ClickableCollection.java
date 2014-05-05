@@ -39,7 +39,7 @@ public class ClickableCollection implements Clickable{
 	}
 
 	@Override
-	public boolean onTouchEvent(int action, int x, int y) {
+	public boolean onTouchEvent(int action, float x, float y) {
 		for(int i = len - 1; i >= 0; i--) {
 			if(clickables.get(i).onTouchEvent(action, x, y))
 				return true;

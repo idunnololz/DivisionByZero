@@ -43,6 +43,7 @@ public class Tower extends PictureBox implements Updatable{
 	private int resellPrice;
 
 	private boolean destroyed = false;
+	private boolean enabled = true;
 
 	private int totalDmgDealt = 0;
 
@@ -54,7 +55,13 @@ public class Tower extends PictureBox implements Updatable{
 		void updateSpecial(float delta);
 		void drawSpecial(float offX, float offY);
 	}
+	
+	public static interface OnTowerChangeListener {
+		void onDamageDealtChange(int totalDmgDealt);
+		void onStatChange();
+	}
 
+	private OnTowerChangeListener towerChangeListener;
 	private Special special;
 
 	public void writeToStream(DataOutputStream stream) throws IOException { 
@@ -131,7 +138,8 @@ public class Tower extends PictureBox implements Updatable{
 				special = DESIRE_SPECIAL;
 				break;
 			case TowerLibrary.TYPE_BRUTAL:
-				special = BRUTAL_SPECIAL;
+			case TowerLibrary.TYPE_DESOLATOR:
+				special = BRUTAL_SPECIAL;	// set target to only ghosts...
 				break;
 			default:
 				break;
@@ -143,6 +151,9 @@ public class Tower extends PictureBox implements Updatable{
 
 		if(textureChanged)
 			Core.game.towerManager.invalidate();
+		
+		if(towerChangeListener != null)
+			towerChangeListener.onStatChange();
 	}
 
 	public void build(float w, float h) {
@@ -198,10 +209,12 @@ public class Tower extends PictureBox implements Updatable{
 	}
 
 	private Sprite getTarget() {
-		List<Sprite> list = Core.game.spriteElements.getRawList();
-		final int len = Core.game.spriteElements.size();
+		List<Sprite> list = Core.game.spriteMgr.getRawList();
+		final int len = Core.game.spriteMgr.size();
 		for(int i = 0; i < len; i++) {
 			Sprite sprite = list.get(i);
+			
+			if(!sprite.isTargetable()) continue;
 
 			final float sX = sprite.x, sY = sprite.y;
 			final float u = (sX - x)*(sX - x);
@@ -215,12 +228,12 @@ public class Tower extends PictureBox implements Updatable{
 	}
 
 	private Sprite getGhostTarget() {
-		List<Sprite> list = Core.game.spriteElements.getRawList();
-		final int len = Core.game.spriteElements.size();
+		List<Sprite> list = Core.game.spriteMgr.getRawList();
+		final int len = Core.game.spriteMgr.size();
 		for(int i = 0; i < len; i++) {
 			Sprite sprite = list.get(i);
 
-			if(!sprite.isGhost()) continue;
+			if(!sprite.isGhost() || !sprite.isTargetable()) continue;
 
 			final float sX = sprite.x, sY = sprite.y;
 			final float u = (sX - x)*(sX - x);
@@ -235,6 +248,7 @@ public class Tower extends PictureBox implements Updatable{
 
 	@Override
 	public boolean update(float dt) {
+		if(!enabled) return true;
 		if(special != null) {
 			special.updateSpecial(dt);
 		} else if(coolDown <= 0) {
@@ -251,12 +265,6 @@ public class Tower extends PictureBox implements Updatable{
 					b.setup(x, y, target, evoTree.dmg[level], 
 							evoTree.bs[level] * Core.MAP_SDP, Bullet.TYPE_AOE, evoTree.aoe[level] * Core.MAP_SDP);
 					break;
-				case TowerLibrary.TYPE_DIAMOND:
-					b.setTexture(R.drawable.demo_flake_shot);
-
-					b.setup(x, y, target, evoTree.dmg[level], 
-							evoTree.bs[level] * Core.MAP_SDP, Bullet.TYPE_COMPLEX);
-					break;
 				case TowerLibrary.TYPE_FLAKE:
 					b.setTexture(R.drawable.demo_flake_shot);
 
@@ -264,7 +272,7 @@ public class Tower extends PictureBox implements Updatable{
 							evoTree.bs[level] * Core.MAP_SDP, Bullet.TYPE_COMPLEX_AOE_FROST,
 							evoTree.aoe[level] * Core.MAP_SDP, /* Slow percentage */ ((int[])evoTree.extra)[level]);
 					b.setState(Sprite.STATE_SLOW);
-					b.setDuration(5f);
+					b.setDuration(SLOW_TIME);
 					break;
 				case TowerLibrary.TYPE_DEMO:
 					b.setTexture(R.drawable.demo_shot);
@@ -282,12 +290,6 @@ public class Tower extends PictureBox implements Updatable{
 							evoTree.bs[level] * Core.MAP_SDP, Bullet.TYPE_SEEKING, 
 							/* dmg multiplier */((float[])evoTree.extra)[level]);
 					b.setState(Sprite.STATE_DECAY);
-					break;
-				case TowerLibrary.TYPE_BRUTAL:
-					b.setTexture(R.drawable.bullet);
-
-					b.setup(x, y, target, evoTree.dmg[level], 
-							evoTree.bs[level] * Core.MAP_SDP, Bullet.TYPE_GHOST);
 					break;
 				default:
 					b.setTexture(R.drawable.bullet);
@@ -326,26 +328,25 @@ public class Tower extends PictureBox implements Updatable{
 	}
 
 	public void upgrade(int selection) {
-		if(selection == evoTree.typeUpgrade[level + 1].length) {
+		if(evoTree.maxLevel <= level + 1) {
+			selection++;
+		}
+		if(selection == 0) {
 			upgrade();
 			return;
 		}
-		evoTree = evoTree.typeUpgrade[level + 1][selection];
+		evoTree = evoTree.typeUpgrade[level + 1][selection - 1];
 		level = 0;
 
 		refreshTowerInfo(true);
 	}
 
-	public int getUpgradeCost(int selection) {
-		if(selection == evoTree.typeUpgrade[level + 1].length) {
-			return getUpgradeCost();
-		} else {
-			return evoTree.typeUpgrade[level + 1][selection].cost[0];
-		}
-	}
-
 	public boolean isMaxLevel() {
 		return evoTree.maxLevel == level + 1;
+	}
+	
+	public void setTowerChangeListener(OnTowerChangeListener listener) {
+		towerChangeListener = listener;
 	}
 
 	public int getSellPrice() {
@@ -358,6 +359,14 @@ public class Tower extends PictureBox implements Updatable{
 
 	public float getRange() {
 		return range;
+	}
+	
+	/**
+	 * Gets the tower range in grid units.
+	 * @return Tower range in grid units.
+	 */
+	public float getGridRange() {
+		return range/Core.MAP_SDP;
 	}
 
 	public boolean hasTypeUpgrade() {
@@ -387,6 +396,9 @@ public class Tower extends PictureBox implements Updatable{
 	private static int desireLaserVertexHandle;
 
 	private static final float SCOPE_LENGTH = 1f;
+
+	public static final float SLOW_TIME = 4f;
+	
 	private static float scopeLength;
 
 	public static void init() {
@@ -585,10 +597,9 @@ public class Tower extends PictureBox implements Updatable{
 	};
 
 	private final Special CLUSTER_SPECIAL = new Special() {
-		private static final int BURST_AMOUNT = 8;
 		private static final float BURST_SPEED = 0.2f;
 
-		private int burstLeft = BURST_AMOUNT;
+		private int burstLeft = 0;
 		private float burstCd = BURST_SPEED;
 
 		private boolean startBurst = false;
@@ -596,7 +607,7 @@ public class Tower extends PictureBox implements Updatable{
 		@Override
 		public void updateSpecial(float delta) {
 			if(coolDown <= 0) {
-				burstLeft = BURST_AMOUNT;
+				burstLeft = (Integer) evoTree.extra;
 
 				Sprite target = getTarget();
 
@@ -657,7 +668,6 @@ public class Tower extends PictureBox implements Updatable{
 	};
 
 	private final Special BOX_SPECIAL = new Special() {
-		private static final float BURN_CD = 0.2f;	// in seconds...
 		private static final float BURN_DURATION = 2f;
 
 		private Rect rect = new Rect();
@@ -697,12 +707,13 @@ public class Tower extends PictureBox implements Updatable{
 					burnCd -= delta;
 
 				if(burnCd <= 0) {
-					burnCd = BURN_CD;
+					burnCd = (Float) evoTree.extra;
 
-					List<Sprite> list = Core.game.spriteElements.getRawList();
-					final int len = Core.game.spriteElements.size();
+					List<Sprite> list = Core.game.spriteMgr.getRawList();
+					final int len = Core.game.spriteMgr.size();
 					for(int i = 0; i < len; i++) {
 						Sprite sprite = list.get(i);
+						if(!sprite.isTargetable()) continue;
 
 						if(rect.contains((int)sprite.x, (int)sprite.y)) {
 							sprite.hitBy(Tower.this);
@@ -779,10 +790,12 @@ public class Tower extends PictureBox implements Updatable{
 					if(scaling) {
 						scaling = false;
 
-						List<Sprite> list = Core.game.spriteElements.getRawList();
-						final int len = Core.game.spriteElements.size();
+						List<Sprite> list = Core.game.spriteMgr.getRawList();
+						final int len = Core.game.spriteMgr.size();
 						for(int i = 0; i < len; i++) {
 							Sprite sprite = list.get(i);
+							
+							if(!sprite.isTargetable()) continue;
 
 							final float s_x = sprite.x, s_y = sprite.y;
 							final float u = (s_x - x)*(s_x - x);
@@ -802,8 +815,8 @@ public class Tower extends PictureBox implements Updatable{
 			if(coolDown <= 0) {
 				boolean hitSomething = false;
 
-				List<Sprite> list = Core.game.spriteElements.getRawList();
-				final int len = Core.game.spriteElements.size();
+				List<Sprite> list = Core.game.spriteMgr.getRawList();
+				final int len = Core.game.spriteMgr.size();
 				for(int i = 0; i < len; i++) {
 					Sprite sprite = list.get(i);
 
@@ -884,10 +897,12 @@ public class Tower extends PictureBox implements Updatable{
 
 					len = (float) (Math.sqrt(a) / Core.MAP_SDP);
 
-					List<Sprite> list = Core.game.spriteElements.getRawList();
-					final int len = Core.game.spriteElements.size();
+					List<Sprite> list = Core.game.spriteMgr.getRawList();
+					final int len = Core.game.spriteMgr.size();
 					for(int i = 0; i < len; i++) {
 						Sprite sprite = list.get(i);
+
+						if(!sprite.isTargetable()) continue;
 
 						float fX = x - sprite.x;
 						float fY = y - sprite.y;
@@ -966,10 +981,19 @@ public class Tower extends PictureBox implements Updatable{
 					// fire
 					Bullet b = Core.game.obtainBullet();
 					b.parent = Tower.this;
-					b.setTexture(R.drawable.bullet);
 
-					b.setup(x, y, target, evoTree.dmg[level], 
-							evoTree.bs[level] * Core.MAP_SDP, Bullet.TYPE_GHOST);
+					if (towerType == TowerLibrary.TYPE_BRUTAL) {	
+						b.setTexture(R.drawable.bullet);
+
+						b.setup(x, y, target, evoTree.dmg[level], 
+								evoTree.bs[level] * Core.MAP_SDP, Bullet.TYPE_GHOST);
+					} else {
+						b.setTexture(R.drawable.bullet);
+
+						b.setup(x, y, target, evoTree.dmg[level], 
+								evoTree.bs[level] * Core.MAP_SDP, Bullet.TYPE_GHOST_AOE,
+								evoTree.aoe[level] * Core.MAP_SDP);
+					}
 
 
 					Core.gu.addGameUpdatable(b);
@@ -989,6 +1013,10 @@ public class Tower extends PictureBox implements Updatable{
 
 	public void updateDamageDealt(int dmg) {
 		totalDmgDealt += dmg;
+		
+		if(towerChangeListener != null) {
+			towerChangeListener.onDamageDealtChange(totalDmgDealt);
+		}
 	}
 
 	public int getTotalDmgDealt() {
@@ -1009,5 +1037,13 @@ public class Tower extends PictureBox implements Updatable{
 
 	public int getLevel() {
 		return level;
+	}
+	
+	public String getDescription() {
+		return evoTree.getDescription();
+	}
+	
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
 	}
 }

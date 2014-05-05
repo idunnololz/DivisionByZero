@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Random;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 
 import com.ggstudios.divisionbyzero.Player.PlayerSnapshot;
 import com.ggstudios.utils.DebugLog;
@@ -24,6 +25,8 @@ import com.ggstudios.utils.DebugLog;
  */
 public class StateManager {
 	private static final String TAG = "StateManager";
+	private static final String USER_PREF_NAME = "usr_pref";
+	private static final String PREF_OPENING_SKIPABLE = "openingSkipable";
 	
 	private static final String SAVE_LEVEL_DATA_NAME = "lev.dat";
 	private static final String SAVE_FILE_NAME = "save_1.dat";
@@ -43,6 +46,11 @@ public class StateManager {
 	private LevelMap levelMap;
 	
 	private Random random = new Random();
+	
+	private SharedPreferences prefs;
+	private SharedPreferences.Editor editor;
+	
+	private boolean openingSkipable = false;
 	
 	public static class UserLevelData {
 		int id;
@@ -75,6 +83,8 @@ public class StateManager {
 		this.context = context; 
 		
 		levelMap = new LevelMap(context);
+		prefs = context.getSharedPreferences(USER_PREF_NAME, 0);
+		editor = prefs.edit();
 	}
 	
 	public LevelMap getLevelMap() {
@@ -112,6 +122,7 @@ public class StateManager {
 	}
 
 	public void saveGame() {
+		DebugLog.d(TAG, "saving game...");
 		FileOutputStream outputStream;
 
 		try {
@@ -125,6 +136,8 @@ public class StateManager {
 
 		if(onSavedStateChanged != null)
 			onSavedStateChanged.onSavedStateChanged();
+		
+		DebugLog.d(TAG, "save complete!");
 	}
 
 	public boolean isSavedGame() {
@@ -201,16 +214,8 @@ public class StateManager {
 
 		Core.lm.save(stream);
 		Core.sm.save(stream);
-
-		DrawableCollection<Sprite> elems = game.spriteElements;
-		List<Sprite> sprites = elems.getRawList();
-		final int len = elems.size();
-		stream.writeInt(len);
-		for(int i = 0; i < len; i++) {
-			Sprite s = sprites.get(i);
-			s.writeToStream(stream);
-		}
 		
+		game.spriteMgr.save(stream);
 		game.bulletMgr.writeToStream(stream);
 
 		stream.flush();
@@ -224,9 +229,10 @@ public class StateManager {
 
 			DataInputStream stream = new DataInputStream(is);
 
-			// we need to dump all meaningful information
-			// such that we can recreate the current situation perfectly.
-
+			// reload the level using the saved data...
+			// the order of these loads depend on the order in which the data was saved
+			// see save()...
+			
 			// load level id
 			int levelResId = stream.readInt();
 			int levelId = stream.readInt();
@@ -257,15 +263,11 @@ public class StateManager {
 
 			Core.lm.load(stream);
 			Core.sm.load(stream);
-
-			final int len = stream.readInt();
-			for(int i = 0; i < len; i++) {
-				Sprite s = Sprite.createFromStream(stream);
-				Core.game.addEnemy(s);
-			}
+			
+			game.spriteMgr.load(stream);
 
 			// force a refresh of the path...
-			game.map.findPath();
+			game.map.forceFullFindPath();
 
 			game.bulletMgr.readFromStream(stream);
 
@@ -319,5 +321,27 @@ public class StateManager {
 	
 	public Random getRandom() {
 		return random;
+	}
+	
+	public void loadUserInfo() {
+		setOpeningSkipable(prefs.getBoolean(PREF_OPENING_SKIPABLE, false));
+	}
+	
+	public void saveUserInfo() {
+		editor.putBoolean(PREF_OPENING_SKIPABLE, openingSkipable);
+		editor.commit();
+	}
+
+	public boolean isOpeningSkipable() {
+		return openingSkipable;
+	}
+
+	public void setOpeningSkipable(boolean openingSkipable) {
+		this.openingSkipable = openingSkipable;
+	}
+
+	public void clearUserData() {
+		prefs.edit().clear().commit();
+		loadUserInfo();
 	}
 }

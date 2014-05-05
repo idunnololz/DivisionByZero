@@ -10,7 +10,7 @@ public class ZoomControl extends Drawable implements Clickable {
 
 	public ZoomControl() {}
 
-	static class ZoomAnimation implements Updatable{
+	private static class ZoomAnimation implements Updatable{
 
 		private static final float DURATION = 0.3f;
 		private float delta;
@@ -71,7 +71,7 @@ public class ZoomControl extends Drawable implements Clickable {
 
 	}
 
-	ZoomAnimation zoomAnimation = new ZoomAnimation();
+	private ZoomAnimation zoomAnimation = new ZoomAnimation();
 
 	public void build() {
 		btnZoomIn = new Button(Core.canvasWidth - Core.SDP * 1.5f, Core.SDP_H, Core.SDP, Core.SDP, R.drawable.zoom_control_in);
@@ -115,7 +115,7 @@ public class ZoomControl extends Drawable implements Clickable {
 	}
 
 	@Override
-	public boolean onTouchEvent(int action, int x, int y) {
+	public boolean onTouchEvent(int action, float x, float y) {
 		return btnZoomIn.onTouchEvent(action, x, y) || btnZoomOut.onTouchEvent(action, x, y);	
 	}
 

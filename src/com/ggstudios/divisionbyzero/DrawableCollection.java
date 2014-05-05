@@ -22,11 +22,7 @@ import java.util.List;
  *
  */
 public class DrawableCollection<T extends Drawable> extends Drawable{
-
-	private static final int REMOVE_CAPACITY = 10;
-
 	protected List<T> drawables = new ArrayList<T>();
-	protected List<T> toRemove = new ArrayList<T>(REMOVE_CAPACITY);
 	protected int len = 0;
 
 	public void addDrawable(T d) {
@@ -48,7 +44,7 @@ public class DrawableCollection<T extends Drawable> extends Drawable{
 	public void removeDrawable(int index) {
 		Collections.swap(drawables, index, len - 1);
 
-		len--;
+		onObjectRemoved();
 	}
 
 	public void removeDrawable(T enemySprite) {
@@ -64,9 +60,13 @@ public class DrawableCollection<T extends Drawable> extends Drawable{
 	 * @param enemySprite
 	 */
 	public synchronized void removeDrawableStrict(T enemySprite) {
-		len--;
+		onObjectRemoved();
 		drawables.remove(enemySprite);
 		//toRemove.add(enemySprite);
+	}
+	
+	protected void onObjectRemoved() {
+		len--;
 	}
 
 	public void clear() {
@@ -80,20 +80,6 @@ public class DrawableCollection<T extends Drawable> extends Drawable{
 			drawables.get(i).draw(offX, offY);
 		}
 	}
-
-//	protected void commitChanges() {
-//		final int len = toRemove.size();
-//		if(len > 0) {
-//			for(int i = 0; i < len; i++) {
-//				T temp = toRemove.get(i);
-//				if(drawables.remove(temp)){
-//					drawables.add(temp);
-//					this.len--;
-//				}
-//			}
-//			toRemove.clear();
-//		}
-//	}
 
 	@Override
 	public void refresh() {

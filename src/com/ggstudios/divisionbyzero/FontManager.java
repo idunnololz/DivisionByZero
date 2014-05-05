@@ -59,7 +59,7 @@ public class FontManager {
 	}
 
 	public int getWidth(String input){
-		return (int) textPaint.measureText(input);
+		return (int) (textPaint.measureText(input) + 0.5f);
 	}
 	
 	public float getHeight() {
@@ -83,7 +83,7 @@ public class FontManager {
 		int cols = MAX_TEXTURE_WIDTH / cellW;
 		int rows = (int)Math.ceil(CHAR_COUNT / (float)cols);
 
-		textureHeight = Utils.findSmallestBase2(rows * cellH);
+		textureHeight = Utils.findSmallestPot(rows * cellH);
 
 		String strTemp = "";
 		Bitmap bitmap = Bitmap.createBitmap(MAX_TEXTURE_WIDTH, textureHeight, Bitmap.Config.ARGB_8888);
@@ -119,7 +119,7 @@ public class FontManager {
 		x = 0;                                          // Initialize X
 		y = 0;                                          // Initialize Y
 		for ( int c = START_CHAR; c < END_CHAR; c++ )  {         // FOR Each Character (On Texture)
-			charRegion[c] = new TextureRegion( MAX_TEXTURE_WIDTH, textureHeight, x, y, cellW - 1, cellH - 1);  // Create Region for Character
+			charRegion[c] = new TextureRegion( MAX_TEXTURE_WIDTH, textureHeight, x, y, cellW - 2, cellH - 2);  // Create Region for Character
 			x += cellW;                              // Move to Next Char (Cell)
 			if ( x + cellW > MAX_TEXTURE_WIDTH )  {
 				x = 0;                                    // Reset X Position to Start

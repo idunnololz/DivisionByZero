@@ -95,7 +95,7 @@ public class Bullet extends PictureBox implements Updatable{
 		this.velocity = vel;
 		this.type = type;
 
-		angle = Utils.fastatan2(target.x - x, target.y - y);
+		angle = (float) Math.atan2(target.x - x, target.y - y);
 		speedX = (float) (Math.sin(angle)*velocity);
 		speedY = (float) (Math.cos(angle)*velocity);
 
@@ -105,8 +105,8 @@ public class Bullet extends PictureBox implements Updatable{
 		case TYPE_COMPLEX_AOE_STUN:
 		case TYPE_COMPLEX_AOE_FROST:
 		case TYPE_COMPLEX:
-			rotate(angle);
-			setVBO(Core.GeneralBuffers.tile);
+			setAngle(angle);
+			setVBO(Core.GeneralBuffers.map_tile);
 			break;
 		default:
 			break;
@@ -127,7 +127,7 @@ public class Bullet extends PictureBox implements Updatable{
 			if(x < boundLeft || y < boundTop || x > boundRight || y > boundBottom){
 				getBulletManager().removeDrawable(this);
 				return false;
-			} else if((spriteHit = Core.game.getGhostHit(this, (int)x, (int)y)) != null) {
+			} else if((spriteHit = getGhostHit(this, (int)x, (int)y)) != null) {
 				// do apply damage here
 				spriteHit.hitBy(this);
 				getBulletManager().removeDrawable(this);
@@ -142,7 +142,7 @@ public class Bullet extends PictureBox implements Updatable{
 			if(x < boundLeft || y < boundTop || x > boundRight || y > boundBottom){
 				getBulletManager().removeDrawable(this);
 				return false;
-			} else if(Core.game.getGhostHit(this, (int)x, (int)y) != null) {
+			} else if(getGhostHit(this, (int)x, (int)y) != null) {
 				// do apply damage here
 				showAoeExplosion();
 				applyDamageInAoeGhost(x, y);
@@ -151,11 +151,11 @@ public class Bullet extends PictureBox implements Updatable{
 			}
 			break;
 		case TYPE_SEEKING:
-			if(Core.game.spriteElements.len == 0) {
+			if(Core.game.spriteMgr.len == 0) {
 				getBulletManager().removeDrawable(this);
 				return false;
 			} else if(!target.isAlive()){
-				target = Core.game.spriteElements.get(0);
+				target = Core.game.spriteMgr.get(0);
 			}
 
 			// AoE seeking is not meant to miss...
@@ -167,12 +167,12 @@ public class Bullet extends PictureBox implements Updatable{
 			y += speedY * dt;
 			break;
 		case TYPE_AOE_SEEKING:
-			if(Core.game.spriteElements.len == 0) {
+			if(Core.game.spriteMgr.len == 0) {
 				showAoeExplosion();
 				getBulletManager().removeDrawable(this);
 				return false;
 			} else if(!target.isAlive()){
-				target = Core.game.spriteElements.get(0);
+				target = Core.game.spriteMgr.get(0);
 			}
 
 			// AoE seeking is not meant to miss...
@@ -191,7 +191,7 @@ public class Bullet extends PictureBox implements Updatable{
 		if(x < boundLeft || y < boundTop || x > boundRight || y > boundBottom){
 			getBulletManager().removeDrawable(this);
 			return false;
-		} else if((spriteHit = Core.game.getEnemyHit(this, (int)x, (int)y)) != null) {
+		} else if((spriteHit = getEnemyHit(this, (int)x, (int)y)) != null) {
 			// do apply damage here
 			switch(type) {
 			case TYPE_COMPLEX_AOE_STUN:
@@ -219,6 +219,33 @@ public class Bullet extends PictureBox implements Updatable{
 		}
 
 		return true;
+	}
+	
+	private Sprite getEnemyHit(Bullet b, int x, int y) {
+		List<Sprite> list = Core.game.spriteMgr.getRawList();
+		final int len = Core.game.spriteMgr.size();
+		for (int i = len - 1; i > -1; i--) {
+			Sprite sprite = list.get(i);
+			if (sprite.isTargetable() && sprite.rect.contains(x, y)) {
+				return sprite;
+			}
+		}
+		return null;
+	}
+	
+	private Sprite getGhostHit(Bullet b, int x, int y) {
+		List<Sprite> list = Core.game.spriteMgr.getRawList();
+		final int len = Core.game.spriteMgr.size();
+		for (int i = len - 1; i > -1; i--) {
+			Sprite sprite = list.get(i);
+			if (sprite.isTargetable() && sprite.rect.contains(x, y)) {
+				if (sprite.isGhost() && sprite.isTargetable()
+						&& sprite.rect.contains(x, y)) {
+					return sprite;
+				}
+			}
+		}
+		return null;
 	}
 
 	private void showAoeExplosion() {
@@ -269,7 +296,7 @@ public class Bullet extends PictureBox implements Updatable{
 					return false;
 				} else {
 					pb.transparency = (1 - total/DURATION);
-					pb.rotate((float) (TOTAL_ROTATE * total/DURATION));
+					pb.setAngle((float) (TOTAL_ROTATE * total/DURATION));
 				}
 				return true;
 			}
@@ -300,7 +327,7 @@ public class Bullet extends PictureBox implements Updatable{
 					return false;
 				} else {
 					pb.transparency = (1 - total/DURATION);
-					pb.rotate((float) (TOTAL_ROTATE * total/DURATION));
+					pb.setAngle((float) (TOTAL_ROTATE * total/DURATION));
 				}
 				return true;
 			}
@@ -309,13 +336,15 @@ public class Bullet extends PictureBox implements Updatable{
 	}
 
 	public void applyDamageInAoe(float x, float y) {
-		List<Sprite> list = Core.game.spriteElements.getRawList();
-		int len = Core.game.spriteElements.size();
+		List<Sprite> list = Core.game.spriteMgr.getRawList();
+		int len = Core.game.spriteMgr.size();
 
 		float rangeSquared = extra * extra;
 
 		for(int i = len - 1; i > -1; i--) {
 			Sprite sprite = list.get(i);
+			
+			if(!sprite.isTargetable()) continue;
 
 			final float s_x = sprite.x, s_y = sprite.y;
 			final float u = (s_x - x)*(s_x - x);
@@ -328,19 +357,21 @@ public class Bullet extends PictureBox implements Updatable{
 	}
 
 	private void applyDamageInAoeGhost(float x, float y) {
-		List<Sprite> list = Core.game.spriteElements.getRawList();
-		int len = Core.game.spriteElements.size();
+		List<Sprite> list = Core.game.spriteMgr.getRawList();
+		int len = Core.game.spriteMgr.size();
 
 		float rangeSquared = extra * extra;
 
 		for(int i = len - 1; i > -1; i--) {
 			Sprite sprite = list.get(i);
 
+			if(!sprite.isGhost() || !sprite.isTargetable()) continue;
+			
 			final float s_x = sprite.x, s_y = sprite.y;
 			final float u = (s_x - x)*(s_x - x);
 			final float v = (s_y - y)*(s_y - y);
 
-			if(rangeSquared > u + v && sprite.isGhost()){
+			if(rangeSquared > u + v){
 				sprite.hitBy(this);
 			}
 		}
@@ -377,7 +408,7 @@ public class Bullet extends PictureBox implements Updatable{
 		stream.writeInt(state);
 		
 		if(target != null && target.isAlive()) {
-			stream.writeInt(Core.game.spriteElements.indexOf(target));
+			stream.writeInt(Core.game.spriteMgr.indexOf(target));
 		} else {
 			stream.writeInt(-1);
 		}
@@ -405,7 +436,7 @@ public class Bullet extends PictureBox implements Updatable{
 		if(targetIndex == -1) {
 			target = null;
 		} else {
-			target = Core.game.spriteElements.get(targetIndex);
+			target = Core.game.spriteMgr.get(targetIndex);
 		}
 		
 		dmg = stream.readInt();

@@ -1,12 +1,16 @@
 // the a will allow us to specify map information
 // specify that we are using map #1
-a 1
+a 0
 // file reader will then continue to read map info until it has found a "e" on a line
 // which denotes the end of the map specification
 
+// Difficulty rating followed by level name...
+#1
+$Initialization
+
 // initial lives and gold
-l 0
-g 5000
+l 20
+g 600
 
 // we may also change default map settings such as creep drop off
 // and creep destination...
@@ -32,14 +36,34 @@ g 5000
 // the seventh is a boolean of whether it's a sub-wave
 //
 // here is a sample:
-// s 1 10 20 1 1 10     0 
-//   t nu sr m h reward toggle if next wave is consecutive
-//   y mb    s p
+// s 1 10 20 1 10      
+//   t nu sr h reward
+//   y mb    p
 //   p er sp
 //   e    aw
 //        n 
 //        ra
 //        te
 
-//1
-s 1 20 1000 2 1 10 1
+// playing beginning cinematics
+! 0
+! 1
+
+//type	num	spwnT	hp	reward
+s 1 	20 	1000 	10 	10	// 1
+p 30000
+s 1 	20 	1000 	20 	10	// 2
+p 30000
+s 1 	20 	1000 	30 	15	// 3
+p 30000
+m The next wave of zeros seem to be moving faster than normal... They seem to be speedlings!
+p 10000
+s 2 	20 	1000 	35 20	// 4
+p 30000
+s 1 	20 	1000 	50 20	// 5
+p 30000
+s 1 	20 	1000 	80	20	// 6
+p 30000
+s 1 	20 	1000 	100	20	// 7
+p 30000
+s 1 	20 	1000 	130 20	// 8

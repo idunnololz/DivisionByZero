@@ -103,7 +103,7 @@ public class SpawnManager implements Updatable{
 				SpawnTimer timer = timers[i];
 				
 				timer.waitTime -= dt;
-				timer.se.elapsed += dt;
+				timer.se.group.groupLeader.elapsed += dt;
 				
 				if(timer.unitsLeft == 0) {
 					// do a swap with the last elem.
@@ -121,17 +121,24 @@ public class SpawnManager implements Updatable{
 					continue;
 				} else if(timer.waitTime <= 0) {
 					// remember the Sprite here is a partially loaded instance...
-					Sprite s = timer.se.sprites.get(--timer.unitsLeft);
+					Sprite s = Core.game.spriteMgr.obtain();
+					SpawnEvent se = timer.se;
+					
+					s.setPathIndex(se.pathIndex);
+					s.preload(se.hp, se.gold, se.enemyType);
+					
 					// Game#addEnemy() will load the sprite for us...
 					Core.game.addEnemy(s);
+					
+					timer.unitsLeft--;
 					
 					timer.waitTime += timer.spawnRate;
 				}
 			}
-		}
-		
-		if(eventsRunning == 0 && spawnQueue.size() == 0) {
-			Core.lm.setCurrentEventDone();
+			
+			if(eventsRunning == 0 && spawnQueue.size() == 0) {
+				Core.lm.setCurrentEventDone();
+			}
 		}
 		return true;
 	}

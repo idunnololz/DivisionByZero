@@ -37,7 +37,7 @@ public class Player {
 		if(this.gold != gold) {
 			this.gold = gold;
 			if(listenerSet) {
-				goldListener.onGoldChanged(lives);
+				goldListener.onGoldChanged(gold);
 			}
 		}
 	}

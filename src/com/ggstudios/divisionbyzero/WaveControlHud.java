@@ -13,9 +13,11 @@ import android.view.MotionEvent;
 import com.ggstudios.divisionbyzero.Button.OnClickListener;
 import com.ggstudios.divisionbyzero.LevelManager.Command;
 import com.ggstudios.divisionbyzero.LevelManager.Event;
+import com.ggstudios.divisionbyzero.LevelManager.Group;
 import com.ggstudios.divisionbyzero.LevelManager.SpawnEvent;
 import com.ggstudios.utils.BitmapUtils;
 import com.ggstudios.utils.BufferUtils;
+import com.ggstudios.utils.DebugLog;
 
 public class WaveControlHud extends Drawable implements Clickable, Updatable {
 	private static final String TAG = "WaveControlHud";
@@ -33,6 +35,11 @@ public class WaveControlHud extends Drawable implements Clickable, Updatable {
 	private Button btnSpeedControl;
 	private Button btnPause;
 	private Button btnNext;
+	
+	public static final int 
+	SPEED_NORMAL = 0, 
+	SPEED_FAST = 1, 
+	SPEED_VERY_FAST = 2;
 
 	// game speeds (x1.0, x2.0, x3.0)
 	private float[] speeds = {1.0f, 2.0f, 3.0f};
@@ -41,7 +48,7 @@ public class WaveControlHud extends Drawable implements Clickable, Updatable {
 	private WaveRectangle[] rects;
 	private float waveStartX, waveEndX;
 
-	private int currentWave = 0;
+	private int currentWaveGroup = 0;
 	private float waveOffset = 0;
 
 	private static final float SKIP_DURATION = 0.5f;
@@ -82,12 +89,6 @@ public class WaveControlHud extends Drawable implements Clickable, Updatable {
 
 		int curWave = 0;
 
-		float hue = 5;
-		float delta = 60;
-		float[] hsv = new float[3];
-		hsv[1] = 0.5f;
-		hsv[2] = 1f;
-
 		for(int i = 0; i < len; i++) {
 			Event e = events.get(i);
 
@@ -95,33 +96,9 @@ public class WaveControlHud extends Drawable implements Clickable, Updatable {
 				SpawnEvent se = (SpawnEvent) e.args;
 				
 				Wave w = waves[curWave] = new Wave();
-				hsv[0] = hue;
-				int color = Color.HSVToColor(hsv);
-				w.color = color;
-						
-				switch(se.enemyType) {		
-				case Sprite.TYPE_REGULAR:
-					w.color = 0xFFB8B8B8;
-					break;
-				case Sprite.TYPE_SPEEDLING:
-					w.color = 0xFF3B7DF7;
-					break;
-				case Sprite.TYPE_HEAVY:
-					w.color = 0xFFEB6CE6;
-					break;
-				case Sprite.TYPE_GHOST:
-					w.color = 0xFF51F071;
-					break;
-				case Sprite.TYPE_SPLITTER:
-					w.color = 0xFFFAFA43;
-					break;
-				}
+				w.color = Sprite.getSpriteStats(se.enemyType).color;
 				
 				w.event = se;
-
-				hue += delta;
-				if(hue >= 360)
-					hue -= 360;
 
 				curWave++;
 			}
@@ -129,6 +106,8 @@ public class WaveControlHud extends Drawable implements Clickable, Updatable {
 	}
 
 	public void buildWave() {
+		if(rects.length == 0) return;
+		
 		float x = height * 4f;
 		final float width = EVENT_WIDTH * Core.SDP;
 		final float height = this.height * EVENT_HEIGHT;
@@ -136,11 +115,25 @@ public class WaveControlHud extends Drawable implements Clickable, Updatable {
 
 		final float y = (this.height - height) / 2f;
 
+		int lastGroupNumber = -1;
+		
+		float right = 0;
+		
 		for(int i = 0; i < rects.length; i++) {
 			final Wave w = waves[i];
 			
-			rects[i] = new WaveRectangle(x, (int)y, width, (int)height, w);
-			x += width + margin;
+			Group group = w.event.group;
+			
+			if(lastGroupNumber != group.groupNumber) {
+				x += margin;
+				right = x + width;
+			}
+			
+			rects[i] = new WaveRectangle(x, (int)y, right - x, (int)height, w);
+
+			x += (width / group.memberCount);
+			
+			lastGroupNumber = group.groupNumber;
 		}
 	}
 
@@ -183,17 +176,7 @@ public class WaveControlHud extends Drawable implements Clickable, Updatable {
 			public void onClick(Button sender) {
 				Core.gu.setTimeMultiplier(getNextSpeed());
 
-				switch(currentSpeedIndex) {
-				case 0:
-					btnSpeedControl.setTexture(R.drawable.wave_control_ff);
-					break;
-				case 1:
-					btnSpeedControl.setTexture(R.drawable.wave_control_fff);
-					break;
-				case 2:
-					btnSpeedControl.setTexture(R.drawable.wave_control_play);
-					break;
-				}
+				onSpeedChanged();
 			}
 
 		});
@@ -215,6 +198,26 @@ public class WaveControlHud extends Drawable implements Clickable, Updatable {
 				animateSkip();
 			}
 		});
+	}
+	
+	public void setSpeed(int speed) {
+		Core.gu.setTimeMultiplier(speeds[speed]);
+		currentSpeedIndex = speed;
+		onSpeedChanged();
+	}
+	
+	private void onSpeedChanged() {
+		switch(currentSpeedIndex) {
+		case 0:
+			btnSpeedControl.setTexture(R.drawable.wave_control_ff);
+			break;
+		case 1:
+			btnSpeedControl.setTexture(R.drawable.wave_control_fff);
+			break;
+		case 2:
+			btnSpeedControl.setTexture(R.drawable.wave_control_play);
+			break;
+		}
 	}
 	
 	private void animateSkip() {
@@ -251,6 +254,8 @@ public class WaveControlHud extends Drawable implements Clickable, Updatable {
 		btnSpeedControl.refresh();
 		btnPause.refresh();
 		btnNext.refresh();
+		
+		onSpeedChanged();
 
 		if(rects != null) {
 			for(int i = 0; i < rects.length; i++) {
@@ -260,9 +265,9 @@ public class WaveControlHud extends Drawable implements Clickable, Updatable {
 	}
 	
 	@Override
-	public boolean onTouchEvent(int action, int x, int y) {
-		final int finalX = (int) (x - this.x);
-		final int finalY = (int) (y - this.y);
+	public boolean onTouchEvent(int action, float x, float y) {
+		final float finalX = x - this.x;
+		final float finalY = y - this.y;
 		
 		boolean handled = btnSpeedControl.onTouchEvent(action, finalX, finalY) || 
 				btnPause.onTouchEvent(action, finalX, finalY) ||
@@ -270,8 +275,8 @@ public class WaveControlHud extends Drawable implements Clickable, Updatable {
 				
 		if(handled) return true;
 		
-		if(action == MotionEvent.ACTION_DOWN) {
-			final int offX = (int) (x - this.x + waveOffset);
+		if(action == MotionEvent.ACTION_DOWN && x >= this.x + waveStartX && x <= this.x + waveStartX + waveEndX) {
+			final int offX = (int) (x - this.x - waveOffset);
 			final int offY = (int) (y - this.y);
 
 			for(int i = 0; i < rects.length; i++) {
@@ -293,16 +298,21 @@ public class WaveControlHud extends Drawable implements Clickable, Updatable {
 	public boolean update(float dt) {
 		if(rects != null) {
 			// calc additional offset
-			int newWave = Core.lm.getCurrentWave() - 1;
-			if(newWave != currentWave) {
+			int curWaveIndex = Core.lm.getCurrentWave() - 1;
+			if(curWaveIndex < 0) return true;
+			
+			Group curGroup = waves[curWaveIndex].event.group;
+			int newWaveGroup = curGroup.groupNumber;
+			if(newWaveGroup != currentWaveGroup) {
 				animateSkip();
 			}
-			currentWave = newWave;
+			currentWaveGroup = newWaveGroup;
 			float newOff = 0;
+			int groupLeaderIndex = curGroup.groupLeader.waveNumber;
 
-			if(currentWave >= 0) {
-				WaveRectangle curRect = rects[currentWave];
-				Wave w = waves[currentWave];
+			if(currentWaveGroup >= 0) {
+				WaveRectangle curRect = rects[groupLeaderIndex];
+				Wave w = waves[groupLeaderIndex];
 				SpawnEvent se = w.event;
 
 				final float done = se.elapsed / se.approxTime;
@@ -388,9 +398,9 @@ public class WaveControlHud extends Drawable implements Clickable, Updatable {
 			textureHandle = BitmapUtils.loadBitmap(bitmap, textureHandle);
 		}
 
-		public void setSize(float new_w, float new_h){
-			w = new_w;
-			h = new_h;
+		public void setSize(float newW, float newH){
+			w = newW;
+			h = newH;
 
 			dirty = true;
 		}

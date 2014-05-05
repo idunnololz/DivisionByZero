@@ -20,16 +20,22 @@ public class GameUpdater extends Thread {
 	// min. time elapsed since an update and max...
 	private int minUpdate = 12, maxUpdate = 16;
 
-	public GameUpdater() {
-	}
+	private boolean cinematicPlaying = false;
+	private Updatable cinematic = null;
+	
+	private Object stopLock = new Object();
+	
+	public GameUpdater() { }
 
 	public void pause() {
+		DebugLog.d(TAG, "pause");
 		synchronized(pauseLock){
 			paused = true;
 		}
 	}
 
 	public void unpause() {
+		DebugLog.d(TAG, "unpause");
 		synchronized(pauseLock){
 			paused = false;
 			pauseLock.notifyAll();
@@ -64,6 +70,22 @@ public class GameUpdater extends Thread {
 		return miscUpdatables.find(item) != -1;
 	}
 	
+	/**
+	 * Sets up the current state of the game updater to
+	 * play a cinematic. That is, no other updatable will
+	 * be processed until the cinematic updatable has completed.
+	 * @param cinematicUpdatable Updatable to be playing for the cinematic
+	 */
+	public void startCinematic(Updatable cinematicUpdatable) {
+		cinematicPlaying = true;
+		cinematic = cinematicUpdatable;
+	}
+	
+	public void stopCinematic(){
+		cinematic = null;
+		cinematicPlaying = false;
+	}
+	
 	@Override
 	public void start(){
 		super.start();
@@ -96,14 +118,18 @@ public class GameUpdater extends Thread {
                 }
                 lastTime = time;
                 
-                gameUpdatables.update(secondsDelta * timeMultiplier);
-                miscUpdatables.update(secondsDelta);
+                if(cinematicPlaying) {
+                	cinematic.update(secondsDelta);
+                } else {
+                	gameUpdatables.update(secondsDelta * timeMultiplier);
+                	miscUpdatables.update(secondsDelta);
+                }
             }
             
             if (finalDelta < maxUpdate) {
                 try {
                     Thread.sleep(maxUpdate - finalDelta);
-                } catch (InterruptedException e) {}
+                } catch (InterruptedException e) {/* do nothing */}
             }
 
 			synchronized(pauseLock){
@@ -117,11 +143,33 @@ public class GameUpdater extends Thread {
 			}
 		}
 		
-		DebugLog.d(TAG, "GameUpdate has stopped");
+		synchronized(stopLock) {
+			DebugLog.d(TAG, "GameUpdate has stopped");
+			stopLock.notify();
+		}
 	}
 
-	public void gameDone() {
-		inGame = false;
+	public void stopUpdaterAndWait() {
+		synchronized(stopLock) {
+			// the thread already stopped... 
+			// just return instead of waiting forever...
+			if(!isRunning()) return;
+			
+			inGame = false;
+			synchronized(pauseLock){
+				paused = false;
+				pauseLock.notify();
+			}
+			try {
+				stopLock.wait();
+			} catch (InterruptedException e) {/*do nothing*/}
+		}
+	}
+	
+	public boolean isRunning() {
+		synchronized(stopLock) {
+			return inGame;
+		}
 	}
 
 	public boolean isPaused() {

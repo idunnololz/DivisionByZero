@@ -20,7 +20,7 @@ public class BulletManager extends DrawableCollection<Bullet> {
 	}
 	
 	public void loadGlData() {
-		final float w = Core.SDP * 0.1f;
+		final float w = Core.MAP_SDP * 0.1f;
 		final float[] vertices = {
 			-w, -w,
 			w, -w,

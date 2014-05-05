@@ -1,0 +1,305 @@
+// the a will allow us to specify map information
+// specify that we are using map #0
+// 14 is width; 17 is height; 10 is map id;
+a 10 14 17
+######**######
+######**######
+##**********##
+##**********##
+##**######**##
+##**######**##
+##**##**##**##
+######**##**##
+######**##**##
+********##**##
+********##**##
+##########**##
+##########**##
+##**********##
+##**********##
+##############
+##############
+// file reader will then continue to read map info until it has found a "e" on a line
+// which denotes the end of the map specification
+
+#3
+$Elemental TD
+
+// initial lives and gold
+l 30
+g 600
+
+// we may also change default map settings such as creep drop off
+// and creep destination...
+// first 2 numbers are drop off
+// second 2 are destination
+// x then y of course
+//5
+//0
+//^ sets start to be grid coordinates (5, 0)
+//0
+//12
+//^ sets destination to be grid coordinates (0, 12)
+
+// this is how spawns will be set...
+// first s denotes a spawn command followed by a space
+// all subsequent arguments will be seperated by a space
+// the first argument is the image number/ sprite type (refer to sprite sheet)
+// the second argument is the number of sprites to spawn
+// the third number is the spawn rate (the higher the number the slower the spawn rate)
+// the fourth is the movement speed modifier (expressed in GIRD_LENGTH)
+// the fifth is the hp of the sprites
+// the sixth is the gold reward of the sprites
+// the seventh is a boolean of whether it's a sub-wave
+//
+// here is a sample:
+// s 1 10 20 1 10     
+//   t nu sr h reward
+//   y mb    p
+//   p er sp
+//   e    aw
+//        n 
+//        ra
+//        te
+
+// Below I have ported over all of the elemental TD enemies...
+
+//1 Timber Wolf
+s 1 30 1000 20 10
+p 30000
+
+//2 Clockwerk Goblin
+s 1 30 1000 24 10
+p 30000
+
+//3 Satyr Trickster
+s 1 30 1000 28 10
+p 30000
+
+//4 Ghoul
+s 1 30 1000 33 10
+p 30000
+
+//5 Forest Troll
+s 1 30 1000 39 20
+p 30000
+
+//6 Quillboar
+s 1 30 1000 46 20
+p 30000
+
+//7 Makrura Deepseer
+s 1 30 1000 54 20
+p 30000
+
+//8 Succubus
+s 1 30 1000 63 20
+p 30000
+
+//9 Dark Elf
+s 7 30 1000 74 20
+p 30000
+
+//10 Paladin
+s 1 30 1000 87 30
+p 30000
+
+//11 Centaur
+s 2 30 1000 102 30
+p 30000
+
+//12 Sludge Minion
+s 1 30 1000 119 30
+p 30000
+
+//13 Naga Myrmidon
+s 1 30 1000 139 30
+p 30000
+
+//14 Fel Beast
+s 8 30 1000 162 40
+p 30000
+
+//15 Crystal Arachnid
+s 1 30 1000 190 40
+p 30000
+
+//16 Dark Minion
+s 7 30 1000 222 50
+p 30000
+
+//17 Raccoon
+s 1 30 1000 260 50
+p 30000
+
+//18 Persian Knight
+s 2 30 1000 304 60
+p 30000
+
+//19 Priest
+s 1 30 1000 356 60
+p 30000
+
+//20 Seige Tank
+s 3 30 1000 416 70
+p 30000
+
+//21 Fire Revenant
+s 7 30 1000 488 70
+p 30000
+
+//22 Bandit
+s 3 30 1000 572 80
+p 30000
+
+//23 Corrupt Treant
+s 1 30 1000 671 90
+p 30000
+
+//24 Battleship
+s 3 30 1000 787 100
+p 30000
+
+//25 Doom Guard
+s 2 30 1000 923 110
+p 30000
+
+//26 Fel Guard
+s 1 30 1000 1082 120
+p 30000
+
+//27 Snowy Owl
+s 1 30 1000 1269 130
+p 30000
+
+//28 Furbolg Tracker
+s 8 30 1000 1488 140
+p 30000
+
+//29 Draenei Protector
+s 1 30 1000 1745 160
+p 30000
+
+//30 Plague Rat
+s 7 30 1000 2046 170
+p 30000
+
+//31 Admiral
+s 2 30 1000 2404 190
+p 30000
+
+//32 Goblin Shredder
+s 3 30 1000 2825 210
+p 30000
+
+//33 Giant Spider
+s 1 30 1000 3320 230
+p 30000
+
+//34 Red Dragon
+s 1 30 1000 3901 260
+p 30000
+
+//35 Shadow Wolf
+s 8 30 1000 4584 280
+p 30000
+
+//36 Albatross
+s 1 30 1000 5386 310
+p 30000
+
+//37 Wagon
+s 3 30 1000 6329 340
+p 30000
+
+//38 Battle Golem
+s 1 30 1000 7437 370
+p 30000
+
+//39 Kobold Shoveler
+s 1 30 1000 8738 410
+p 30000
+
+//40 Thunder Lizard
+s 2 30 1000 10267 450
+p 30000
+
+//41 Sea Revenant
+s 7 30 1000 12115 500
+p 30000
+
+//42 Dreadlord
+s 1 30 1000 14296 550
+p 30000
+
+//43 Dune Worm
+s 8 30 1000 16869 600
+p 30000
+
+//44 Wisp
+s 2 30 1000 19905 170
+p 30000
+
+//45 Spirit of Vengeance
+s 3 30 1000 23488 170
+p 30000
+
+//46 Demolisher
+s 1 30 1000 27716 170
+p 30000
+
+//47 Hydra 
+s 1 30 1000 32705 170
+p 30000
+
+//48 Ghost
+s 7 30 1000 38592 170
+p 30000
+
+//49 Black Drake
+s 1 30 1000 45539 170
+p 30000
+
+//50 Glaive Thrower
+s 3 30 1000 2046 170
+p 30000
+
+//51 Harpy Rogue
+s 1 30 1000 2046 170
+p 30000
+
+//52 Troll Batrider
+s 2 30 1000 2046 170
+p 30000
+
+//53 Archmage
+s 1 30 1000 2046 170
+p 30000
+
+//54 Green Dragon
+s 1 30 1000 2046 170
+p 30000
+
+//55 Watery Minion
+s 8 30 1000 2046 170
+p 30000
+
+//56 Death Knight
+s 7 30 1000 2046 170
+p 30000
+
+//57 Lava Runner
+s 1 30 1000 2046 170
+p 30000
+
+//58 Infernal Contraption
+s 3 30 1000 2046 170
+p 30000
+
+//59 Mountain Giant
+s 1 30 1000 2046 170
+p 30000
+
+//60 Evil Child
+s 8 30 1000 2046 170
+p 30000
